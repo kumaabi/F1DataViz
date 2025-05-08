@@ -1,0 +1,1592 @@
+API Reference
+Data Objects
+Session
+class fastf1.core.Session(event, session_name, f1_api_support=False)[source]
+Object for accessing session specific data.
+
+The session class will usually be your starting point. This object will have various information about the session.
+
+Note
+
+Most of the data is only available after calling Session.load()
+
+Attributes:
+
+event
+
+Reference to the associated event object.
+
+name
+
+Name of this session, for example 'Qualifying', 'Race', 'FP1', ...
+
+f1_api_support
+
+The official F1 API supports this event and lap timing data and telemetry data are available.
+
+date
+
+Date at which this session took place.
+
+api_path
+
+API base path for this session
+
+session_info
+
+Session information including meeting, session, country and circuit names and id keys.
+
+drivers
+
+List of all drivers that took part in this session; contains driver numbers as string.
+
+results
+
+Session result with driver information.
+
+laps
+
+All laps from all drivers driven in this session.
+
+total_laps
+
+Originally scheduled number of laps for race-like sessions such as Race and Sprint.
+
+weather_data
+
+Dataframe containing weather data for this session as received from the api.
+
+car_data
+
+Dictionary of car telemetry (Speed, RPM, etc.) as received from the api by car number (where car number is a string and the telemetry is an instance of Telemetry)
+
+pos_data
+
+Dictionary of car position data as received from the api by car number (where car number is a string and the telemetry is an instance of Telemetry)
+
+session_status
+
+Session status data as returned by fastf1.api.session_status_data()
+
+track_status
+
+Track status data as returned by fastf1.api.track_status_data()
+
+race_control_messages
+
+Race Control messages as returned by fastf1.api.race_control_messages()
+
+session_start_time
+
+Session time at which the session was started according to the session status data.
+
+t0_date
+
+Date timestamp which marks the beginning of the data stream (the moment at which the session time is zero).
+
+Methods:
+
+load(*[, laps, telemetry, weather, ...])
+
+Load session data from the supported APIs.
+
+get_driver(identifier)
+
+Get a driver object which contains additional information about a driver.
+
+get_circuit_info()
+
+Returns additional information about the circuit that hosts this event.
+
+event
+Reference to the associated event object.
+
+Type:
+Event
+
+name
+Name of this session, for example ‘Qualifying’, ‘Race’, ‘FP1’, …
+
+Type:
+str
+
+f1_api_support
+The official F1 API supports this event and lap timing data and telemetry data are available.
+
+Type:
+bool
+
+date
+Date at which this session took place.
+
+Type:
+pandas.Datetime
+
+api_path
+API base path for this session
+
+Type:
+str
+
+property session_info: dict
+Session information including meeting, session, country and circuit names and id keys.
+
+The id keys are unique identifiers that are used by the F1 APIs.
+
+(This property holds the data that is returned by the “SessionInfo” endpoint of the F1 livetiming API.)
+
+property drivers
+List of all drivers that took part in this session; contains driver numbers as string.
+
+Data is available after calling Session.load
+
+Type:
+list
+
+property results: SessionResults
+Session result with driver information.
+
+Data is available after calling Session.load
+
+Type:
+SessionResults
+
+property laps: Laps
+All laps from all drivers driven in this session.
+
+Data is available after calling Session.load with laps=True
+
+Type:
+Laps
+
+property total_laps: int
+Originally scheduled number of laps for race-like sessions such as Race and Sprint. It takes None as a default value for other types of sessions or if data is unavailable
+
+Data is available after calling Session.load with laps=True
+
+Type:
+int
+
+property weather_data
+Dataframe containing weather data for this session as received from the api. See fastf1.api.weather_data() for available data channels. Each data channel is one row of the dataframe.
+
+Data is available after calling Session.load with weather=True
+
+property car_data: Telemetry
+Dictionary of car telemetry (Speed, RPM, etc.) as received from the api by car number (where car number is a string and the telemetry is an instance of Telemetry)
+
+Data is available after calling Session.load with telemetry=True
+
+property pos_data: Telemetry
+Dictionary of car position data as received from the api by car number (where car number is a string and the telemetry is an instance of Telemetry)
+
+Data is available after calling Session.load with telemetry=True
+
+property session_status
+Session status data as returned by fastf1.api.session_status_data()
+
+Data is available after calling Session.load with laps=True
+
+Type:
+pandas.Dataframe
+
+property track_status
+Track status data as returned by fastf1.api.track_status_data()
+
+Data is available after calling Session.load with laps=True
+
+Type:
+pandas.Dataframe
+
+property race_control_messages
+Race Control messages as returned by fastf1.api.race_control_messages()
+
+Data is available after calling Session.load with messages=True
+
+Type:
+pandas.Dataframe
+
+property session_start_time: Timedelta
+Session time at which the session was started according to the session status data. This is not the time at which the session is scheduled to be started!
+
+Data is available after calling Session.load with laps=True
+
+Type:
+pandas.Timedelta
+
+property t0_date
+Date timestamp which marks the beginning of the data stream (the moment at which the session time is zero).
+
+Data is available after calling Session.load with telemetry=True
+
+Type:
+pandas.Datetime
+
+load(*, laps=True, telemetry=True, weather=True, messages=True, livedata=None)[source]
+Load session data from the supported APIs.
+
+This method allows to flexibly load some or all data that FastF1 can give you access to. Without specifying any further options, all data is loaded by default.
+
+Usually, it is recommended to load all available data because internally FastF1 partially mixes data from multiple endpoints and data sources to correct for errors or to add more information. These features are optional and may not work when some data is unavailable. In these cases, FastF1 will return the data to the best of its abilities.
+
+Note
+
+Lap data: drivers crashing and retiring
+
+During a session: An additional last lap is added for a driver if the last timed lap of a driver is not an inlap and the session is aborted next. The Time for when this lap was “set” will be set to the time at which the session was aborted.
+
+First lap in a race: A single lap with minimal information will be added in race sessions if a driver does not complete at least one timed lap. The LapStartTime for this lap will be set to the start time of the session as with all other laps in a race. The Time at which this lap was “set” will be set to the time at which the first driver completes their first lap.
+
+Note
+
+Absolute time is not super accurate. The moment a lap is logged is not always the same and there will be some jitter. At the moment lap time reference is synchronised on the sector time triggered with lowest latency. Expect an error of around ±10m when overlapping telemetry data of different laps.
+
+Parameters:
+laps (bool) – Load laps and session status data.
+
+telemetry (bool) – Load telemetry data.
+
+weather (bool) – Load weather data.
+
+messages (bool) – Load race control messages for the session
+
+livedata (LiveTimingData) – instead of requesting the data from the api, locally saved livetiming data can be used as a data source
+
+get_driver(identifier)[source]
+Get a driver object which contains additional information about a driver.
+
+Parameters:
+identifier (str) – driver’s three letter identifier (for example ‘VER’) or driver number as string
+
+Return type:
+DriverResult
+
+Returns:
+instance of DriverResult
+
+get_circuit_info()[source]
+Returns additional information about the circuit that hosts this event.
+
+This information includes the location of corners, marshal lights, marshal sectors and the rotation of the track map. Note that the data is manually created and therefore not highly accurate, but it is useful for annotating data visualizations.
+
+See CircuitInfo for detailed information.
+
+Return type:
+Optional[CircuitInfo]
+
+Laps
+class fastf1.core.Laps(*args, session=None, **kwargs)[source]
+Object for accessing lap (timing) data of multiple laps.
+
+Parameters:
+*args – passed through to pandas.DataFrame super class
+
+session (Optional[Session]) – instance of session class; required for full functionality
+
+**kwargs – passed through to pandas.DataFrame super class
+
+This class allows for easily picking specific laps from all laps in a session. It implements some additional functionality on top of the usual pandas.DataFrame functionality. Among others, the laps’ associated telemetry data can be accessed.
+
+If for example you want to get the fastest lap of Bottas you can narrow it down like this:
+
+import fastf1
+
+session = fastf1.get_session(2019, 'Bahrain', 'Q')
+session.load()
+best_bottas = session.laps.pick_drivers('BOT').pick_fastest()
+
+print(best_bottas['LapTime'])
+# Timedelta('0 days 00:01:28.256000')
+Slicing this class will return Laps again for slices containing multiple rows. Single rows will be returned as Lap.
+
+The following information is available per lap (one DataFrame column for each):
+
+Time (pandas.Timedelta): Session time when the lap time was set (end of lap)
+
+Driver (str): Three letter driver identifier
+
+DriverNumber (str): Driver number
+
+LapTime (pandas.Timedelta): Recorded lap time. To see if a lap time was deleted, check the Deleted column.
+
+LapNumber (float): Recorded lap number
+
+Stint (float): Stint number
+
+PitOutTime (pandas.Timedelta): Session time when car exited the pit
+
+PitInTime (pandas.Timedelta): Session time when car entered the pit
+
+Sector1Time (pandas.Timedelta): Sector 1 recorded time
+
+Sector2Time (pandas.Timedelta): Sector 2 recorded time
+
+Sector3Time (pandas.Timedelta): Sector 3 recorded time
+
+Sector1SessionTime (pandas.Timedelta): Session time when the Sector 1 time was set
+
+Sector2SessionTime (pandas.Timedelta): Session time when the Sector 2 time was set
+
+Sector3SessionTime (pandas.Timedelta): Session time when the Sector 3 time was set
+
+SpeedI1 (float): Speedtrap sector 1 [km/h]
+
+SpeedI2 (float): Speedtrap sector 2 [km/h]
+
+SpeedFL (float): Speedtrap at finish line [km/h]
+
+SpeedST (float): Speedtrap on longest straight (Not sure) [km/h]
+
+IsPersonalBest (bool): Flag that indicates whether this lap is the official personal best lap of a driver. If any lap of a driver is quicker than their respective personal best lap, this means that the quicker lap is invalid and not counted. For example, this can happen if the track limits were exceeded.
+
+Compound (str): Tyres event specific compound name: SOFT, MEDIUM, HARD, INTERMEDIATE, WET, TEST_UNKNOWN, UNKNOWN. The actual underlying compounds C1 to C5 are not differentiated. TEST_UNKNOWN compounds can appear in the data during pre-season testing and in-season Pirelli tyre tests.
+
+TyreLife (float): Laps driven on this tire (includes laps in other sessions for used sets of tires)
+
+FreshTyre (bool): Tyre had TyreLife=0 at stint start, i.e. was a new tire
+
+Team (str): Team name
+
+LapStartTime (pandas.Timedelta): Session time at the start of the lap
+
+LapStartDate (pandas.Timestamp): Timestamp at the start of the lap
+
+TrackStatus (str): A string that contains track status numbers for all track status that occurred during this lap. The meaning of the track status numbers is explained in fastf1.api.track_status_data(). For filtering laps by track status, you may want to use Laps.pick_track_status().
+
+Position (float): Position of the driver at the end of each lap. This value is NaN for FP1, FP2, FP3, Sprint Shootout, and Qualifying as well as for crash laps.
+
+Deleted (Optional[bool]): Indicates that a lap was deleted by the stewards, for example because of a track limits violation. This data is only available when race control messages are loaded.
+
+DeletedReason (str): Gives the reason for a lap time deletion. This data is only available when race control messages are loaded.
+
+FastF1Generated (bool): Indicates that this lap was added by FastF1. Such a lap will generally have very limited information available and information is partly interpolated or based on reasonable assumptions. Cases were this is used are, for example, when a partial last lap is added for drivers that retired on track.
+
+IsAccurate (bool): Indicates that the lap start and end time are synced correctly with other laps. Do not confuse this with the accuracy of the lap time or sector times. They are always considered to be accurate if they exist! If this value is True, the lap has passed as basic accuracy check for timing data. This does not guarantee accuracy but laps marked as inaccurate need to be handled with caution. They might contain errors which can not be spotted easily. Laps need to satisfy the following criteria to be marked as accurate:
+
+not an inlap or outlap
+
+set under green or yellow flag (the api sometimes has issues with data from SC/VSC laps)
+
+is not the first lap after a safety car period (issues with SC/VSC might still appear on the first lap after it has ended)
+
+has a value for lap time and all sector times
+
+the sum of the sector times matches the lap time (If this were to ever occur, it would also be logged separately as a data integrity error. You usually don’t need to worry about this.)
+
+Attributes:
+
+QUICKLAP_THRESHOLD
+
+Used to determine 'quick' laps.
+
+telemetry
+
+Telemetry data for all laps in self
+
+Methods:
+
+get_telemetry(*[, frequency])
+
+Telemetry data for all laps in self
+
+get_car_data(**kwargs)
+
+Car data for all laps in self
+
+get_pos_data(**kwargs)
+
+Pos data for all laps in self
+
+get_weather_data()
+
+Return weather data for each lap in self.
+
+pick_lap(lap_number)
+
+Return all laps of a specific LapNumber in self based on LapNumber.
+
+pick_laps(lap_numbers)
+
+Return all laps of a specific LapNumber or a list of LapNumbers in self. ::.
+
+pick_driver(identifier)
+
+Return all laps of a specific driver in self based on the driver's three letters identifier or based on the driver number.
+
+pick_drivers(identifiers)
+
+Return all laps of the specified driver or drivers in self based on the drivers' three letters identifier or the driver number. ::.
+
+pick_team(name)
+
+Return all laps of a specific team in self based on the team's name.
+
+pick_teams(names)
+
+Return all laps of the specified team or teams in self based on the team names. ::.
+
+pick_fastest([only_by_time])
+
+Return the lap with the fastest lap time.
+
+pick_quicklaps([threshold])
+
+Return all laps with LapTime faster than a certain limit.
+
+pick_tyre(compound)
+
+Return all laps in self which were done on a specific compound.
+
+pick_compounds(compounds)
+
+Return all laps in self which were done on some specific compounds.
+
+pick_track_status(status[, how])
+
+Return all laps set under a specific track status.
+
+pick_wo_box()
+
+Return all laps which are NOT in laps or out laps.
+
+pick_box_laps([which])
+
+Return all laps which are either in-laps, out-laps, or both.
+
+pick_not_deleted()
+
+Return all laps whose lap times are NOT deleted.
+
+pick_accurate()
+
+Return all laps which pass the accuracy validation check (lap['IsAccurate'] is True).
+
+split_qualifying_sessions()
+
+Splits a lap object into individual laps objects for each qualifying session.
+
+iterlaps([require])
+
+Iterator for iterating over all laps in self.
+
+QUICKLAP_THRESHOLD = 1.07
+Used to determine ‘quick’ laps. Defaults to the 107% rule.
+
+property telemetry: Telemetry
+Telemetry data for all laps in self
+
+This is a cached (!) property for get_telemetry(). It will return the same value as get_telemetry but cache the result so that the involved processing is only done once.
+
+This is mainly provided for convenience and backwards compatibility.
+
+See get_telemetry() for more information.
+
+Note
+
+Telemetry can only be returned if self contains laps of one driver only.
+
+Returns:
+instance of Telemetry
+
+get_telemetry(*, frequency=None)[source]
+Telemetry data for all laps in self
+
+Telemetry data is the result of merging the returned data from get_car_data() and get_pos_data(). This means that telemetry data at least partially contains interpolated values! Telemetry data additionally already has computed channels added (e.g. Distance).
+
+This method is provided for convenience and compatibility reasons. But using it does usually not produce the most accurate possible result. It is recommended to use get_car_data() or get_pos_data() when possible. This is also faster if merging of car and position data is not necessary and if not all computed channels are needed.
+
+Resampling during merging is done according to the frequency set by TELEMETRY_FREQUENCY.
+
+Note
+
+Telemetry can only be returned if self contains laps of one driver only.
+
+Parameters:
+frequency (Union[int, Literal['original'], None]) – Optional frequency to overwrite the default value set by TELEMETRY_FREQUENCY. (Either string ‘original’ or integer for a frequency in Hz)
+
+Return type:
+Telemetry
+
+Returns:
+instance of Telemetry
+
+get_car_data(**kwargs)[source]
+Car data for all laps in self
+
+Slices the car data in Session.car_data using this set of laps and returns the result.
+
+The data returned by this method does not contain computed telemetry channels. The can be added by calling the appropriate add_*() method on the returned telemetry object..
+
+Note
+
+Car data can only be returned if self contains laps of one driver only.
+
+Parameters:
+**kwargs – Keyword arguments are passed to Telemetry.slice_by_lap()
+
+Return type:
+Telemetry
+
+Returns:
+instance of Telemetry
+
+get_pos_data(**kwargs)[source]
+Pos data for all laps in self
+
+Slices the position data in Session.pos_data using this set of laps and returns the result.
+
+Note
+
+Position data can only be returned if self contains laps of one driver only.
+
+Parameters:
+**kwargs – Keyword arguments are passed to Telemetry.slice_by_lap()
+
+Return type:
+Telemetry
+
+Returns:
+instance of Telemetry
+
+get_weather_data()[source]
+Return weather data for each lap in self.
+
+Weather data is updated once per minute. This means that there are usually one or two data points per lap. This function will always return only one data point per lap:
+
+The first value within the duration of a lap
+
+or
+
+the last known value before the end of the lap if there are no values within the duration of a lap
+
+Note
+
+The returned DataFrame will have one row for each lap in self. If self contains laps from multiple drivers, these may overlap and the returned DataFrame may contain duplicate rows with duplicate index values.
+
+See fastf1.api.weather_data() for available data channels.
+
+If you wish to have more control over the data, you can access the weather data directly in Session.weather_data.
+
+Return type:
+DataFrame
+
+Returns:
+pandas.DataFrame
+
+session = fastf1.get_session(2019, 'Monza', 'Q')
+session.load(telemetry=False)
+weather_data = session.laps.get_weather_data()
+print(weather_data)
+                     Time AirTemp  ... WindDirection WindSpeed
+20 0 days 00:20:14.613000    22.5  ...           212       2.0
+21 0 days 00:21:15.001000    22.5  ...           207       2.7
+23 0 days 00:23:14.854000    22.7  ...           210       2.3
+24 0 days 00:24:14.430000    23.2  ...           207       3.2
+26 0 days 00:26:14.315000    23.6  ...           238       1.8
+..                    ...     ...  ...           ...       ...
+36 0 days 00:36:14.426000    23.0  ...           192       0.9
+37 0 days 00:37:14.391000    23.3  ...           213       0.9
+28 0 days 00:28:14.324000    23.5  ...           183       1.3
+34 0 days 00:34:14.385000    23.0  ...           272       0.8
+35 0 days 00:35:14.460000    23.2  ...           339       1.1
+
+[275 rows x 8 columns]
+Joining weather data with lap timing data:
+
+import pandas as pd  # needed additionally to fastf1
+
+# prepare the data for joining
+laps = session.laps
+laps = laps.reset_index(drop=True)
+weather_data = weather_data.reset_index(drop=True)
+
+# exclude the 'Time' column from weather data when joining
+joined = pd.concat([laps, weather_data.loc[:, ~(weather_data.columns == 'Time')]], axis=1)
+print(joined)
+                      Time Driver  ... WindDirection WindSpeed
+0   0 days 00:21:01.358000    LEC  ...           212       2.0
+1   0 days 00:22:21.775000    LEC  ...           207       2.7
+2   0 days 00:24:03.991000    LEC  ...           210       2.3
+3   0 days 00:25:24.117000    LEC  ...           207       3.2
+4   0 days 00:27:09.461000    LEC  ...           238       1.8
+..                     ...    ...  ...           ...       ...
+270 0 days 00:36:38.150000    KUB  ...           192       0.9
+271 0 days 00:38:37.508000    KUB  ...           213       0.9
+272 0 days 00:33:27.227000    VER  ...           183       1.3
+273 0 days 00:35:05.865000    VER  ...           272       0.8
+274 0 days 00:36:47.787000    VER  ...           339       1.1
+
+[275 rows x 38 columns]
+pick_lap(lap_number)[source]
+Return all laps of a specific LapNumber in self based on LapNumber.
+
+Deprecated since version 3.1.0: pick_lap is deprecated and will be removed in a future release. Use pick_laps() instead.
+
+lap_1 = session_laps.pick_lap(1) lap_25 = session_laps.pick_lap(25)
+
+Parameters:
+lap_number (int) – Lap number
+
+Return type:
+Laps
+
+Returns:
+instance of Laps
+
+pick_laps(lap_numbers)[source]
+Return all laps of a specific LapNumber or a list of LapNumbers in self.
+
+lap_1 = session_laps.pick_laps(1)
+lap_10_to_20 = session_laps.pick_lap(range(10, 21))
+Parameters:
+lap_numbers (Union[int, Iterable[int]]) – int for matching a single lap, an iterable of ints for matching multiple laps
+
+Return type:
+Laps
+
+Returns:
+instance of Laps
+
+pick_driver(identifier)[source]
+Return all laps of a specific driver in self based on the driver’s three letters identifier or based on the driver number.
+
+Deprecated since version 3.1.0: pick_driver is deprecated and will be removed in a future release. Use pick_drivers() instead.
+
+perez_laps = session_laps.pick_drivers(‘PER’) bottas_laps = session_laps.pick_drivers(77) kimi_laps = session_laps.pick_drivers(‘RAI’)
+
+Parameters:
+identifier (str or int) – Driver abbreviation or number
+
+Return type:
+Laps
+
+Returns:
+instance of Laps
+
+pick_drivers(identifiers)[source]
+Return all laps of the specified driver or drivers in self based on the drivers’ three letters identifier or the driver number.
+
+ver_laps = session_laps.pick_drivers("VER")
+some_drivers_laps = session_laps.pick_drivers([5, 'BOT', 7])
+Parameters:
+identifiers (Union[int, str, Iterable[Union[int, str]]]) – Multiple driver abbreviations or driver numbers (can be mixed)
+
+Return type:
+Laps
+
+Returns:
+instance of Laps
+
+pick_team(name)[source]
+Return all laps of a specific team in self based on the team’s name.
+
+Deprecated since version 3.1.0: pick_team is deprecated and will be removed in a future release. Use pick_teams() instead.
+
+mercedes = session_laps.pick_team(‘Mercedes’) alfa_romeo = session_laps.pick_team(‘Alfa Romeo’)
+
+Parameters:
+name (str) – Team name
+
+Return type:
+Laps
+
+Returns:
+instance of Laps
+
+pick_teams(names)[source]
+Return all laps of the specified team or teams in self based on the team names.
+
+rbr_laps = session_laps.pick_teams("Red Bull")
+some_drivers_laps = session_laps.pick_teams(['Haas', 'Alpine'])
+Parameters:
+names (Union[str, Iterable[str]]) – A single team name or team names
+
+Return type:
+Laps
+
+Returns:
+instance of Laps
+
+pick_fastest(only_by_time=False)[source]
+Return the lap with the fastest lap time.
+
+This method will by default return the quickest lap out of self, that is also marked as personal best lap of a driver.
+
+If the quickest lap by lap time is not marked as personal best, this means that it was not counted. This can be the case for example, if the driver exceeded track limits and the lap time was deleted.
+
+If no lap is marked as personal best lap or self contains no laps, None is returned instead.
+
+The check for personal best lap can be disabled, so that any quickest lap will be returned.
+
+Parameters:
+only_by_time (bool) – Ignore whether any laps are marked as personal best laps and simply return the lap that has the lowest lap time.
+
+Return type:
+Optional[Lap]
+
+Returns:
+instance of Lap or None
+
+pick_quicklaps(threshold=None)[source]
+Return all laps with LapTime faster than a certain limit. By default, the threshold is 107% of the best LapTime of all laps in self.
+
+Parameters:
+threshold (Optional[float]) – custom threshold coefficient (e.g. 1.05 for 105%)
+
+Return type:
+Laps
+
+Returns:
+instance of Laps
+
+pick_tyre(compound)[source]
+Return all laps in self which were done on a specific compound.
+
+Deprecated since version 3.1.0: pick_tyre is deprecated and will be removed in a future release. Use pick_compounds() instead.
+
+Parameters:
+compound (str) – may be “SOFT”, “MEDIUM”, “HARD”, “INTERMEDIATE”, “WET”, “UNKNOWN”, or “TEST_UNKNOWN”
+
+Return type:
+Laps
+
+Returns:
+instance of Laps
+
+pick_compounds(compounds)[source]
+Return all laps in self which were done on some specific compounds.
+
+soft_laps = session_laps.pick_compounds("SOFT")
+slick_laps = session_laps.pick_compounds(['SOFT', 'MEDIUM', "HARD])
+Parameters:
+compounds (Union[str, Iterable[str]]) – may be “SOFT”, “MEDIUM”, “HARD”, “INTERMEDIATE”, “WET”,
+
+"UNKNOWN"
+
+"TEST_UNKNOWN" (or)
+
+Return type:
+Laps
+
+Returns:
+instance of Laps
+
+pick_track_status(status, how='equals')[source]
+Return all laps set under a specific track status.
+
+Parameters:
+status (str) – The track status as a string, e.g. ‘1’
+
+how (str) –
+
+one of ‘equals’/’contains’/’excludes’/’any’/’none’
+
+how=’equals’: status=’2’ will only match ‘2’.
+
+how=’contains’: status=’2’ will also match ‘267’ and similar
+
+how=’excludes’: status=’26’ will not match ‘267’ but will match ‘27’
+
+how=’any’: status=’26’ will match both ‘2’ and ‘6’
+
+how=’none’: status=’26’ will not match either ‘12’ or ‘16’
+
+Return type:
+Laps
+
+Returns:
+instance of Laps
+
+pick_wo_box()[source]
+Return all laps which are NOT in laps or out laps.
+
+Return type:
+Laps
+
+Returns:
+instance of Laps
+
+pick_box_laps(which='both')[source]
+Return all laps which are either in-laps, out-laps, or both. Note: a lap could be an in-lap and an out-lap at the same time. In that case, it will get returned regardless of the ‘which’ parameter.
+
+Parameters:
+which (str) –
+
+one of ‘in’/’out’/’both’
+
+which=’in’: only laps in which the driver entered the pit lane are returned
+
+which=’out’: only laps in which the driver exited the pit lane are returned
+
+which=’both’: both in-laps and out-laps are returned
+
+Return type:
+Laps
+
+Returns:
+instance of Laps
+
+pick_not_deleted()[source]
+Return all laps whose lap times are NOT deleted.
+
+Return type:
+Laps
+
+Returns:
+instance of Laps
+
+pick_accurate()[source]
+Return all laps which pass the accuracy validation check (lap[‘IsAccurate’] is True).
+
+Return type:
+Laps
+
+Returns:
+instance of Laps
+
+split_qualifying_sessions()[source]
+Splits a lap object into individual laps objects for each qualifying session.
+
+This method only works for qualifying sessions and requires that session status data is loaded.
+
+Example:
+
+q1, q2, q3 = laps.split_qualifying_sessions()
+Return type:
+list[Optional[Laps]]
+
+Returns: Three Laps objects, one for Q1, Q2 and Q3
+each. If any of these sessions was cancelled, None will be returned instead of Laps.
+
+iterlaps(require=None)[source]
+Iterator for iterating over all laps in self.
+
+This method wraps pandas.DataFrame.iterrows(). It additionally provides the require keyword argument.
+
+Parameters:
+require (Optional[Iterable]) – Require is a list of column/telemetry channel names. All names listed in require must exist in the data and have a non-null value (tested with pandas.is_null()). The iterator only yields laps for which this is true. If require is left empty, the iterator will yield all laps.
+
+Yields:
+(index, lap) – label and an instance of Lap
+
+Return type:
+Iterable[tuple[int, Lap]]
+
+Lap
+class fastf1.core.Lap(*args, **kwargs)[source]
+Object for accessing lap (timing) data of a single lap.
+
+This class wraps pandas.Series. It provides extra functionality for accessing a lap’s associated telemetry data.
+
+Parameters:
+*args – passed through to pandas.Series super class
+
+**kwargs – passed through to pandas.Series super class
+
+Attributes:
+
+telemetry
+
+Telemetry data for this lap
+
+Methods:
+
+get_telemetry(*[, frequency])
+
+Telemetry data for this lap
+
+get_car_data(**kwargs)
+
+Car data for this lap
+
+get_pos_data(**kwargs)
+
+Pos data for all laps in self
+
+get_weather_data()
+
+Return weather data for this lap.
+
+property telemetry: Telemetry
+Telemetry data for this lap
+
+This is a cached (!) property for get_telemetry(). It will return the same value as get_telemetry but cache the result so that the involved processing is only done once.
+
+This is mainly provided for convenience and backwards compatibility.
+
+See get_telemetry() for more information.
+
+Returns:
+instance of Telemetry
+
+get_telemetry(*, frequency=None)[source]
+Telemetry data for this lap
+
+Telemetry data is the result of merging the returned data from get_car_data() and get_pos_data(). This means that telemetry data at least partially contains interpolated values! Telemetry data additionally already has computed channels added (e.g. Distance).
+
+This method is provided for convenience and compatibility reasons. But using it does usually not produce the most accurate possible result. It is recommended to use get_car_data() or get_pos_data() when possible. This is also faster if merging of car and position data is not necessary and if not all computed channels are needed.
+
+Resampling during merging is done according to the frequency set by TELEMETRY_FREQUENCY if not overwritten with the frequency argument.
+
+Parameters:
+frequency (Union[int, Literal['original'], None]) – Optional frequency to overwrite default value set by TELEMETRY_FREQUENCY. (Either string ‘original’ or integer for a frequency in Hz)
+
+Return type:
+Telemetry
+
+Returns:
+instance of Telemetry
+
+get_car_data(**kwargs)[source]
+Car data for this lap
+
+Slices the car data in Session.car_data using this lap and returns the result.
+
+The data returned by this method does not contain computed telemetry channels. The can be added by calling the appropriate add_*() method on the returned telemetry object.
+
+Parameters:
+**kwargs – Keyword arguments are passed to Telemetry.slice_by_lap()
+
+Return type:
+Telemetry
+
+Returns:
+instance of Telemetry
+
+get_pos_data(**kwargs)[source]
+Pos data for all laps in self
+
+Slices the position data in Session.pos_data using this lap and returns the result.
+
+Parameters:
+**kwargs – Keyword arguments are passed to Telemetry.slice_by_lap()
+
+Return type:
+Telemetry
+
+Returns:
+instance of Telemetry
+
+get_weather_data()[source]
+Return weather data for this lap.
+
+Weather data is updated once per minute. This means that there are usually one or two data points per lap. This function will always return only one data point:
+
+The first value within the duration of a lap
+
+or
+
+the last known value before the end of the lap if there are no values within the duration of a lap
+
+See fastf1.api.weather_data() for available data channels.
+
+If you wish to have more control over the data, you can access the weather data directly in Session.weather_data.
+
+Return type:
+Series
+
+Returns:
+pandas.Series
+
+session = fastf1.get_session(2019, 'Monza', 'Q')
+session.load(telemetry=False)
+lap = session.laps.pick_fastest()
+lap['LapStartTime']
+Timedelta('0 days 01:09:55.561000')
+lap.get_weather_data()
+Time             0 days 01:10:15.292000
+AirTemp                            23.0
+Humidity                           51.9
+Pressure                          992.4
+Rainfall                          False
+TrackTemp                          37.8
+WindDirection                       166
+WindSpeed                           0.8
+Name: 70, dtype: object
+Telemetry
+class fastf1.core.Telemetry(*args, session=None, driver=None, drop_unknown_channels=False, **kwargs)[source]
+Multi-channel time series telemetry data
+
+The object can contain multiple telemetry channels. Multiple telemetry objects with different channels can be merged on time. Each telemetry channel is one dataframe column. Partial telemetry (e.g. for one lap only) can be obtained through various methods for slicing the data. Additionally, methods for adding common computed data channels are available.
+
+The following telemetry channels existed in the original API data:
+
+Car data:
+Speed (float): Car speed [km/h]
+
+RPM (float): Car RPM
+
+nGear (int): Car gear number
+
+Throttle (float): 0-100 Throttle pedal pressure [%]
+
+Brake (bool): Brakes are applied or not.
+
+DRS (int): DRS indicator (See fastf1.api.car_data() for more info)
+
+Position data:
+X (float): X position [1/10 m]
+
+Y (float): Y position [1/10 m]
+
+Z (float): Z position [1/10 m]
+
+Status (str): Flag - OffTrack/OnTrack
+
+For both of the above:
+Time (timedelta): Time (0 is start of the data slice)
+
+SessionTime (timedelta): Time elapsed since the start of the session
+
+Date (datetime): The full date + time at which this sample was created
+
+Source (str): Flag indicating how this sample was created:
+
+‘car’: sample from original api car data
+
+‘pos’: sample from original api position data
+
+‘interpolated’: this sample was artificially created; all values are computed/interpolated
+
+Example:
+A sample’s source is indicated as ‘car’. It contains values for speed, rpm and x, y, z coordinates. Originally, this sample (with its timestamp) was received when loading car data. This means that the speed and rpm value are original values as received from the api. The coordinates are interpolated for this sample.
+
+All methods of Telemetry which resample or interpolate data will preserve and adjust the source flag correctly when modifying data.
+
+Through merging/slicing it is possible to obtain any combination of telemetry channels! The following additional computed data channels can be added:
+
+Distance driven between two samples: add_differential_distance()
+
+Distance driven since the first sample: add_distance()
+
+Relative distance driven since the first sample: add_relative_distance()
+
+Distance to driver ahead and car number of said driver: add_driver_ahead()
+
+Note
+
+See the separate explanation concerning the various definitions of ‘Time’ for more information on the three date and time related channels: Time, Date and Timing - Explanation
+
+Slicing this class will return Telemetry again for slices containing multiple rows. Single rows will be returned as pandas.Series.
+
+Parameters:
+*args – passed through to pandas.DataFrame superclass
+
+session (Session) – Instance of associated session object. Required for full functionality!
+
+driver (str) – Driver number as string. Required for full functionality!
+
+drop_unknown_channels (bool) – Remove all unknown data channels (i.e. columns) on initialization.
+
+**kwargs – passed through to pandas.DataFrame superclass
+
+Attributes:
+
+TELEMETRY_FREQUENCY
+
+Defines the frequency used when resampling the telemetry data.
+
+base_class_view
+
+For a nicer debugging experience; can view DataFrame through this property in various IDEs
+
+Methods:
+
+join(*args, **kwargs)
+
+Wraps pandas.DataFrame.join() and adds metadata propagation.
+
+merge(*args, **kwargs)
+
+Wraps pandas.DataFrame.merge() and adds metadata propagation.
+
+slice_by_mask(mask[, pad, pad_side])
+
+Slice self using a boolean array as a mask.
+
+slice_by_lap(ref_laps[, pad, pad_side, ...])
+
+Slice self to only include data from the provided lap or laps.
+
+slice_by_time(start_time, end_time[, pad, ...])
+
+Slice self to only include data in a specific time frame.
+
+merge_channels(other[, frequency])
+
+Merge telemetry objects containing different telemetry channels.
+
+resample_channels([rule, new_date_ref])
+
+Resample telemetry data.
+
+fill_missing()
+
+Calculate missing values in self.
+
+register_new_channel(name, signal_type[, ...])
+
+Register a custom telemetry channel.
+
+get_first_non_zero_time_index()
+
+Return the first index at which the 'Time' value is not zero or NA/NaT
+
+add_differential_distance([drop_existing])
+
+Add column 'DifferentialDistance' to self.
+
+add_distance([drop_existing])
+
+Add column 'Distance' to self.
+
+add_relative_distance([drop_existing])
+
+Add column 'RelativeDistance' to self.
+
+add_track_status([drop_existing])
+
+Add column 'TrackStatus' to self.
+
+add_driver_ahead([drop_existing])
+
+Add column 'DriverAhead' and 'DistanceToDriverAhead' to self.
+
+calculate_differential_distance()
+
+Calculate the distance between subsequent samples of self.
+
+integrate_distance()
+
+Return the distance driven since the first sample of self.
+
+calculate_driver_ahead([return_reference])
+
+Calculate driver ahead and distance to driver ahead.
+
+TELEMETRY_FREQUENCY = 'original'
+Defines the frequency used when resampling the telemetry data. Either the string 'original' or an integer to specify a frequency in Hz.
+
+property base_class_view
+For a nicer debugging experience; can view DataFrame through this property in various IDEs
+
+join(*args, **kwargs)[source]
+Wraps pandas.DataFrame.join() and adds metadata propagation.
+
+When calling self.join metadata will be propagated from self to the joined dataframe.
+
+merge(*args, **kwargs)[source]
+Wraps pandas.DataFrame.merge() and adds metadata propagation.
+
+When calling self.merge metadata will be propagated from self to the merged dataframe.
+
+slice_by_mask(mask, pad=0, pad_side='both')[source]
+Slice self using a boolean array as a mask.
+
+Parameters:
+mask (Union[list, Series, ndarray]) – Array of boolean values with the same length as self
+
+pad (int) – Number of samples used for padding the sliced data
+
+pad_side (str) – Where to pad the data; possible options: ‘both’,
+
+'before'
+
+'after'
+
+Return type:
+Telemetry
+
+slice_by_lap(ref_laps, pad=0, pad_side='both', interpolate_edges=False)[source]
+Slice self to only include data from the provided lap or laps.
+
+Note
+
+Self needs to contain a ‘SessionTime’ column.
+
+Note
+
+When slicing with an instance of Laps as a reference, the data will be sliced by first and last lap. Missing laps in between will not be considered and data for these will still be included in the sliced result.
+
+Parameters:
+ref_laps (Union[Lap, Laps]) – The lap/laps by which to slice self
+
+pad (int) – Number of samples used for padding the sliced data
+
+pad_side (str) – Where to pad the data; possible options: ‘both’, ‘before’, ‘after
+
+interpolate_edges (bool) – Add an interpolated sample at the beginning and end to exactly match the provided time window.
+
+Return type:
+Telemetry
+
+slice_by_time(start_time, end_time, pad=0, pad_side='both', interpolate_edges=False)[source]
+Slice self to only include data in a specific time frame.
+
+Note
+
+Self needs to contain a ‘SessionTime’ column. Slicing by time use the ‘SessionTime’ as its reference.
+
+Parameters:
+start_time (Timedelta) – Start of the section
+
+end_time (Timedelta) – End of the section
+
+pad (int) – Number of samples used for padding the sliced data
+
+pad_side (str) – Where to pad the data; possible options: ‘both’, ‘before’, ‘after
+
+interpolate_edges (bool) – Add an interpolated sample at the beginning and end to exactly match the provided time window.
+
+Return type:
+Telemetry
+
+Returns:
+Telemetry
+
+merge_channels(other, frequency=None)[source]
+Merge telemetry objects containing different telemetry channels.
+
+The two objects don’t need to have a common time base. The data will be merged, optionally resampled and missing values will be interpolated.
+
+Telemetry.TELEMETRY_FREQUENCY determines if and how the data is resampled. This can be overridden using the frequency keyword for this method.
+
+Merging and resampling:
+
+If the frequency is ‘original’, data will not be resampled. The two objects will be merged and all timestamps of both objects are kept. Values will be interpolated so that all telemetry channels contain valid data for all timestamps. This is the default and recommended option.
+
+If the frequency is specified as an integer in Hz the data will be merged as before. After that, the merged time base will be resampled from the first value on at the specified frequency. Afterward, the data will be interpolated to fit the new time base. This means that usually most if not all values of the data will be interpolated values. This is detrimental for overall accuracy.
+
+Interpolation:
+
+Missing values after merging will be interpolated for all known telemetry channels using fill_missing(). Different interpolation methods are used depending on what kind of data the channel contains. For example, forward fill is used to interpolated ‘nGear’ while linear interpolation is used for ‘RPM’ interpolation.
+
+Note
+
+Unknown telemetry channels will be merged but missing values will not be interpolated. This can either be done manually or a custom telemetry channel can be added using register_new_channel().
+
+Note
+
+Do not resample data multiple times. Always resample based on the original data to preserve accuracy
+
+Parameters:
+other (Union[Telemetry, DataFrame]) – Object to be merged with self
+
+frequency (Union[int, Literal['original'], None]) – Optional frequency to overwrite the default value set by TELEMETRY_FREQUENCY. (Either string ‘original’ or integer for a frequency in Hz)
+
+resample_channels(rule=None, new_date_ref=None, **kwargs)[source]
+Resample telemetry data.
+
+Convenience method for frequency conversion and resampling. Up and down sampling of data is supported. ‘Date’ and ‘SessionTime’ need to exist in the data. ‘Date’ is used as the main time reference.
+
+There are two ways to use this method:
+
+Usage like pandas.DataFrame.resample(): In this case you need to specify the ‘rule’ for resampling and any additional keywords will be passed on to pandas.Series.resample() to create a new time reference. See the pandas method to see which options are available.
+
+using the ‘new_date_ref’ keyword a pandas.Series containing new values for date (dtype pandas.Timestamp) can be provided. The existing data will be resampled onto this new time reference.
+
+Parameters:
+rule (Optional[str]) – Resampling rule for pandas.Series.resample()
+
+new_date_ref (Optional[Series]) – New custom Series of reference dates
+
+**kwargs (Optional[Any]) – Only in combination with ‘rule’; additional parameters for pandas.Series.resample()
+
+fill_missing()[source]
+Calculate missing values in self.
+
+Only known telemetry channels will be interpolated. Unknown channels are skipped and returned unmodified. Interpolation will be done according to the default mapping and according to options specified for registered custom channels. For example: | Linear interpolation will be used for continuous values (Speed, RPM) | Forward-fill will be used for discrete values (Gear, DRS, …)
+
+See register_new_channel() for adding custom channels.
+
+classmethod register_new_channel(name, signal_type, interpolation_method=None)[source]
+Register a custom telemetry channel.
+
+Registered telemetry channels are automatically interpolated when merging or resampling data.
+
+Parameters:
+name (str) – Telemetry channel/column name
+
+signal_type (str) – One of three possible signal types: - ‘continuous’: Speed, RPM, Distance, … - ‘discrete’: DRS, nGear, status values, … - ‘excluded’: Data channel will be ignored during resampling
+
+interpolation_method (Optional[str]) – The interpolation method which should be used. Can only be specified and is required in combination with signal_type='continuous'. See pandas.Series.interpolate() for possible interpolation methods.
+
+get_first_non_zero_time_index()[source]
+Return the first index at which the ‘Time’ value is not zero or NA/NaT
+
+add_differential_distance(drop_existing=True)[source]
+Add column ‘DifferentialDistance’ to self.
+
+This column contains the distance driven between subsequent samples.
+
+Calls calculate_differential_distance() and joins the result with self.
+
+Parameters:
+drop_existing (bool) – Drop and recalculate column if it already exists
+
+Return type:
+Telemetry
+
+Returns:
+self joined with new column or self if column exists and drop_existing is False.
+
+add_distance(drop_existing=True)[source]
+Add column ‘Distance’ to self.
+
+This column contains the distance driven since the first sample of self in meters.
+
+The data is produced by integrating the differential distance between subsequent laps. You should not apply this function to telemetry of many laps simultaneously to reduce integration error. Instead apply it only to single laps or few laps at a time!
+
+Calls integrate_distance() and joins the result with self.
+
+Parameters:
+drop_existing (bool) – Drop and recalculate column if it already exists
+
+Return type:
+Telemetry
+
+Returns:
+self joined with new column or self if column exists and drop_existing is False.
+
+add_relative_distance(drop_existing=True)[source]
+Add column ‘RelativeDistance’ to self.
+
+This column contains the distance driven since the first sample as a floating point number where 0.0 is the first sample of self and 1.0 is the last sample.
+
+This is calculated the same way as ‘Distance’ (see: add_distance()). The same warnings apply.
+
+Parameters:
+drop_existing (bool) – Drop and recalculate column if it already exists
+
+Return type:
+Telemetry
+
+Returns:
+self joined with new column or self if column exists and drop_existing is False.
+
+add_track_status(drop_existing=True)[source]
+Add column ‘TrackStatus’ to self.
+
+This column contains the Track Status for each event as a number.
+
+See fastf1.api.track_status_data() for more information.
+
+Parameters:
+drop_existing (bool) – Drop and recalculate column if it already exists.
+
+Returns:
+self joined with new column or self if column
+exists and drop_existing is False.
+
+Return type:
+Telemetry
+
+add_driver_ahead(drop_existing=True)[source]
+Add column ‘DriverAhead’ and ‘DistanceToDriverAhead’ to self.
+
+DriverAhead: Driver number of the driver ahead as string DistanceToDriverAhead: Distance to next car ahead in meters
+
+Note
+
+Cars in the pit lane are currently not excluded from the data. They will show up when overtaken on pit straight even if they’re not technically in front of the car. A fix for this is TBD with other improvements.
+
+This should only be applied to data of single laps or few laps at a time to reduce integration error. For longer time spans it should be applied per lap and the laps should be merged afterwards. If you absolutely need to apply it to a whole session, use the legacy implementation. Note that data of the legacy implementation will be considerably less smooth. (see fastf1.legacy)
+
+Calls calculate_driver_ahead() and joins the result with self.
+
+Parameters:
+drop_existing (bool) – Drop and recalculate column if it already exists
+
+Return type:
+Telemetry
+
+Returns:
+self joined with new column or self if column exists and drop_existing is False.
+
+calculate_differential_distance()[source]
+Calculate the distance between subsequent samples of self.
+
+Distance is in meters
+
+Return type:
+Series
+
+integrate_distance()[source]
+Return the distance driven since the first sample of self.
+
+Distance is in meters. The data is produce by integration. Integration error will stack up when used for long slices of data. This should therefore only be used for data of single laps or few laps at a time.
+
+Returns:
+pd.Series
+
+calculate_driver_ahead(return_reference=False)[source]
+Calculate driver ahead and distance to driver ahead.
+
+Driver ahead: Driver number of the driver ahead as string Distance to driver ahead: Distance to the car ahead in meters
+
+Note
+
+This gives a smoother/cleaner result than the legacy implementation but WILL introduce integration error when used over long distances (more than one or two laps may sometimes be considered a long distance). If in doubt, do sanity checks (against the legacy version or in another way).
+
+Parameters:
+return_reference (bool) – Additionally return the reference telemetry data slice that is used to calculate the new data.
+
+Returns:
+driver ahead (numpy.array), distance to driver ahead (numpy.array), [reference telemetry (optional, Telemetry)]
+
+Results
+class fastf1.core.SessionResults(*args, _cast_default_cols=False, _force_default_cols=False, **kwargs)[source]
+This class provides driver and result information for all drivers that participated in a session.
+
+This class subclasses a pandas.DataFrame and the usual methods provided by pandas can be used to work with the data.
+
+All dataframe columns will always exist even if they are not relevant for the current session!
+
+The following information is provided for each driver as a column of the dataframe:
+
+DriverNumber | str | The number associated with this driver in this session (usually the drivers permanent number)
+
+BroadcastName | str | First letter of the drivers first name plus the drivers full last name in all capital letters. (e.g. ‘P GASLY’)
+
+FullName | str | The drivers full name (e.g. “Pierre Gasly”)
+
+Abbreviation | str | The drivers three letter abbreviation (e.g. “GAS”)
+
+DriverId | str | driverId that is used by the Ergast API
+
+TeamName | str | The team name (short version without title sponsors)
+
+TeamColor | str | The color commonly associated with this team (hex value)
+
+TeamId | str | constructorId that is used by the Ergast API
+
+FirstName | str | The drivers first name
+
+LastName | str | The drivers last name
+
+HeadshotUrl | str | The URL to the driver’s headshot
+
+CountryCode | str | The driver’s country code (e.g. “FRA”)
+
+Position | float | The drivers finishing position (values only given if session is ‘Race’, ‘Qualifying’, ‘Sprint Shootout’, ‘Sprint’, or ‘Sprint Qualifying’).
+
+ClassifiedPosition | str | The official classification result for each driver. This is either an integer value if the driver is officially classified or one of “R” (retired), “D” (disqualified), “E” (excluded), “W” (withdrawn), “F” (failed to qualify) or “N” (not classified).
+
+GridPosition | float | The drivers starting position (values only given if session is ‘Race’, ‘Sprint’, ‘Sprint Shootout’ or ‘Sprint Qualifying’)
+
+Q1 | pd.Timedelta | The drivers best Q1 time (values only given if session is ‘Qualifying’ or ‘Sprint Shootout’)
+
+Q2 | pd.Timedelta | The drivers best Q2 time (values only given if session is ‘Qualifying’ or ‘Sprint Shootout’)
+
+Q3 | pd.Timedelta | The drivers best Q3 time (values only given if session is ‘Qualifying’ or ‘Sprint Shootout’)
+
+Time | pd.Timedelta | The drivers total race time (values only given if session is ‘Race’, ‘Sprint’, ‘Sprint Shootout’ or ‘Sprint Qualifying’ and the driver was not more than one lap behind the leader)
+
+Status | str | A status message to indicate if and how the driver finished the race or to indicate the cause of a DNF. Possible values include but are not limited to ‘Finished’, ‘+ 1 Lap’, ‘Crash’, ‘Gearbox’, … (values only given if session is ‘Race’, ‘Sprint’, ‘Sprint Shootout’ or ‘Sprint Qualifying’)
+
+Points | float | The number of points received by each driver for their finishing result.
+
+By default, the session results are indexed by driver number and sorted by finishing position.
+
+Note
+
+This class is usually not instantiated directly. You should create a session and access the session result through the Session.results property.
+
+Parameters:
+*args – passed on to pandas.DataFrame superclass
+
+force_default_cols (bool) – Enforce that all default columns and only the default columns exist
+
+**kwargs – passed on to pandas.DataFrame superclass (except ‘columns’ which is unsupported for this object)
+
+Added in version 2.2.
+
+class fastf1.core.DriverResult(*args, **kwargs)[source]
+This class provides driver and result information for a single driver.
+
+This class subclasses a pandas.Series and the usual methods provided by pandas can be used to work with the data.
+
+For information on which data is available, see SessionResults.
+
+Note
+
+This class is usually not instantiated directly. You should create a session and access the driver result through Session.get_driver() or by slicing the session result.
+
+Parameters:
+*args – passed through to pandas.Series superclass
+
+**kwargs – passed through to pandas.Series superclass
+
+Added in version 2.2.
+
+Attributes:
+
+dnf
+
+True if driver did not finish
+
+property dnf: bool
+True if driver did not finish
+
+CircuitInfo
+class fastf1.mvapi.data.CircuitInfo(corners, marshal_lights, marshal_sectors, rotation)[source]
+Holds information about the circuit that is useful for visualizing and annotating data.
+
+corners, marshal_lights and marshal_sectors are track markers that all use a similar DataFrame format. Each set of these track markers has the following DataFrame columns:
+
+Columns: X <float>, Y <float>, Number <int>, Letter <str>, Angle <float>, Distance <float>
+
+X and Y specify the position on the track map
+
+Number is the number of the corner. Letter is optionally used to differentiate corners with the same number on some circuits, e.g. “2A”.
+
+Angle is an angle in degrees, used to visually offset the marker’s placement on a track map in a logical direction (usually orthogonal to the track).
+
+Distance is the location of the marker as a distance from the start/finish line. This value needs to be computed using car telemetry as a reference. It will therefore only be available, if telemetry data is loaded.
+
+Note
+
+This data has been manually created and is not highly accurate but sufficient for visualization. A big thanks to MultiViewer (https://multiviewer.app/) for providing this data to FastF1.
+
+Attributes:
+
+corners
+
+Location of corners.
+
+marshal_lights
+
+Location of marshal lights.
+
+marshal_sectors
+
+Location of marshal sectors.
+
+rotation
+
+Rotation of the circuit in degrees.
+
+corners: DataFrame
+Location of corners.
+
+(DataFrame format described above)
+
+marshal_lights: DataFrame
+Location of marshal lights.
+
+(DataFrame format described above)
+
+marshal_sectors: DataFrame
+Location of marshal sectors.
+
+(DataFrame format described above)
+
+rotation: float
+Rotation of the circuit in degrees. This can be used to rotate the coordinate system of the telemetry (position) data to match the orientation of the official track map.
+
+Exceptions
+class fastf1.core.NoLapDataError(*args)[source]
+Raised if the API request does not fail but there is no usable data after processing the result.
+
+class fastf1.core.InvalidSessionError(*args)[source]
+Raised if no session for the specified event name, type and year can be found.

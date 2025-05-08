@@ -1,0 +1,23 @@
+=== 2025 Miami GP – Qualifying (all drivers) ===
+         Abbreviation           FullName         TeamName                     Q1                     Q2                     Q3
+Position                                                                                                                      
+1.0               VER     Max Verstappen  Red Bull Racing 0 days 00:01:26.870000 0 days 00:01:26.643000 0 days 00:01:26.204000
+2.0               NOR       Lando Norris          McLaren 0 days 00:01:26.955000 0 days 00:01:26.499000 0 days 00:01:26.269000
+3.0               ANT     Kimi Antonelli         Mercedes 0 days 00:01:27.077000 0 days 00:01:26.606000 0 days 00:01:26.271000
+4.0               PIA      Oscar Piastri          McLaren 0 days 00:01:27.006000 0 days 00:01:26.269000 0 days 00:01:26.375000
+5.0               RUS     George Russell         Mercedes 0 days 00:01:27.014000 0 days 00:01:26.575000 0 days 00:01:26.385000
+6.0               SAI       Carlos Sainz         Williams 0 days 00:01:27.098000 0 days 00:01:26.847000 0 days 00:01:26.569000
+7.0               ALB    Alexander Albon         Williams 0 days 00:01:27.042000 0 days 00:01:26.855000 0 days 00:01:26.682000
+8.0               LEC    Charles Leclerc          Ferrari 0 days 00:01:27.417000 0 days 00:01:26.948000 0 days 00:01:26.754000
+9.0               OCO       Esteban Ocon     Haas F1 Team 0 days 00:01:27.450000 0 days 00:01:26.967000 0 days 00:01:26.824000
+10.0              TSU       Yuki Tsunoda  Red Bull Racing 0 days 00:01:27.298000 0 days 00:01:26.959000 0 days 00:01:26.943000
+11.0              HAD       Isack Hadjar     Racing Bulls 0 days 00:01:27.301000 0 days 00:01:26.987000                    NaT
+12.0              HAM     Lewis Hamilton          Ferrari 0 days 00:01:27.279000 0 days 00:01:27.006000                    NaT
+13.0              BOR  Gabriel Bortoleto      Kick Sauber 0 days 00:01:27.343000 0 days 00:01:27.151000                    NaT
+14.0              DOO        Jack Doohan           Alpine 0 days 00:01:27.422000 0 days 00:01:27.186000                    NaT
+15.0              LAW        Liam Lawson     Racing Bulls 0 days 00:01:27.444000 0 days 00:01:27.363000                    NaT
+16.0              HUL    Nico Hulkenberg      Kick Sauber 0 days 00:01:27.473000                    NaT                    NaT
+17.0              ALO    Fernando Alonso     Aston Martin 0 days 00:01:27.604000                    NaT                    NaT
+18.0              GAS       Pierre Gasly           Alpine 0 days 00:01:27.710000                    NaT                    NaT
+19.0              STR       Lance Stroll     Aston Martin 0 days 00:01:27.830000                    NaT                    NaT
+20.0              BEA     Oliver Bearman     Haas F1 Team 0 days 00:01:27.999000                    NaT                    NaT

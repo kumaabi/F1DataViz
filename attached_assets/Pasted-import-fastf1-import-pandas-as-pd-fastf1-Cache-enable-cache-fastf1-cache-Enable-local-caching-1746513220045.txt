@@ -1,0 +1,64 @@
+import fastf1
+import pandas as pd
+
+fastf1.Cache.enable_cache('fastf1_cache')  # Enable local caching
+
+def get_driver_standings_up_to_round(year, up_to_round):
+    standings = {}
+
+    for rnd in range(1, up_to_round + 1):
+        try:
+            session = fastf1.get_session(year, rnd, 'R')
+            session.load()
+            results = session.results
+
+            for _, row in results.iterrows():
+                abbrev = row['Abbreviation']
+                points = row['Points']
+                if abbrev not in standings:
+                    standings[abbrev] = 0
+                standings[abbrev] += points
+        except Exception as e:
+            print(f"Error loading round {rnd}: {e}")
+            continue
+
+    standings_df = pd.DataFrame(list(standings.items()), columns=['Driver', 'Points'])
+    standings_df.sort_values(by='Points', ascending=False, inplace=True)
+    return standings_df.reset_index(drop=True)
+
+def get_constructor_standings_up_to_round(year, up_to_round):
+    constructor_points = {}
+
+    for rnd in range(1, up_to_round + 1):
+        try:
+            session = fastf1.get_session(year, rnd, 'R')
+            session.load()
+            results = session.results
+
+            for _, row in results.iterrows():
+                team = row['TeamName']
+                points = row['Points']
+                if team not in constructor_points:
+                    constructor_points[team] = 0
+                constructor_points[team] += points
+        except Exception as e:
+            print(f"Error loading round {rnd}: {e}")
+            continue
+
+    constructors_df = pd.DataFrame(list(constructor_points.items()), columns=['Constructor', 'Points'])
+    constructors_df.sort_values(by='Points', ascending=False, inplace=True)
+    return constructors_df.reset_index(drop=True)
+
+
+# Usage
+year = 2025
+up_to_round = 5  # Example: up to Miami Grand Prix
+
+drivers = get_driver_standings_up_to_round(year, up_to_round)
+constructors = get_constructor_standings_up_to_round(year, up_to_round)
+
+print("\n--- Driver Standings ---")
+print(drivers)
+
+print("\n--- Constructor Standings ---")
+print(constructors)

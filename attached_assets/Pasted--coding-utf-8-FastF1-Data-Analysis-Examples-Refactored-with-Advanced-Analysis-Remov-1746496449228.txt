@@ -1,0 +1,910 @@
+# -*- coding: utf-8 -*-
+"""
+FastF1 Data Analysis Examples (Refactored with Advanced Analysis)
+
+Removed the 9th analysis ("Analyze Pit Stops") to avoid errors it was causing.
+
+Requirements:
+- Python 3.8+
+- FastF1: pip install fastf1
+- Matplotlib: pip install matplotlib
+- Pandas: pip install pandas
+- NumPy: pip install numpy
+- SciPy: pip install scipy (for some advanced plotting/smoothing)
+
+Usage:
+1) Ensure the 'fastf1_cache' directory exists or let this script create it automatically.
+2) Modify 'year', 'event_name', 'session_type', 'driver1', 'driver2' to match what you want.
+3) Run with: python fastf1_advanced_analyses.py
+"""
+
+import os
+import traceback
+
+import fastf1
+import fastf1.plotting
+import fastf1.utils
+
+import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
+
+import pandas as pd
+import numpy as np
+
+# --- Configuration ---
+cache_path = 'fastf1_cache'  # Folder where data is cached; will be created if not found
+year = 2025
+event_name = 'Miami Grand Prix'  # e.g., 'Bahrain Grand Prix', 'Italian Grand Prix'
+session_type = 'Q'                 # 'FP1', 'FP2', 'FP3', 'Q', 'S' (Sprint), 'R' (Race)
+
+driver1 = 'VER'  # Driver abbreviation (e.g., 'HAM', 'VER', 'LEC', 'PER')
+driver2 = 'NOR'  # Another driver for comparisons
+
+
+###############################################################################
+# Helper: Show Plot
+###############################################################################
+def show_plot(fig=None, title="Plot"):
+    """ Helper function to display plots with tight layout. """
+    if fig is None:
+        fig = plt.gcf()  # Get current figure if none provided
+    fig.tight_layout()
+    plt.show()
+
+
+###############################################################################
+# 1. Load Race Schedule for a Season
+###############################################################################
+def analyze_race_schedule(analysis_year):
+    """Loads and prints the race schedule for a given year."""
+    print("\n--- 1. Race Schedule ---")
+    try:
+        schedule = fastf1.get_event_schedule(analysis_year)
+        print(schedule[['RoundNumber', 'Country', 'Location', 'OfficialEventName',
+                        'EventDate', 'Session5Date']].head())
+    except Exception as e:
+        print(f"Error loading schedule for {analysis_year}: {e}")
+
+
+###############################################################################
+# 2. Get Race Results
+###############################################################################
+def analyze_race_results(session):
+    """Prints the race results from the loaded session."""
+    print("\n--- 2. Race Results ---")
+    if hasattr(session, 'results') and not session.results.empty:
+        results = session.results[['DriverNumber', 'Abbreviation', 'TeamName',
+                                   'Position', 'GridPosition', 'Points', 'Status', 'Time']]
+        print(results.head())
+    else:
+        print("Session results data not available or empty.")
+
+
+###############################################################################
+# 3. Get Fastest Lap of the Race
+###############################################################################
+def analyze_fastest_lap(laps):
+    """Finds and prints details of the fastest lap in the session."""
+    print("\n--- 3. Fastest Lap ---")
+    if not laps.empty:
+        fastest_lap = laps.pick_fastest()
+        if fastest_lap is not None and not fastest_lap.empty:
+            print(f"Fastest Lap: {fastest_lap['Driver']} ({fastest_lap['Team']}) - "
+                  f"Lap {fastest_lap['LapNumber']} - Time: {fastest_lap['LapTime']}")
+            print(fastest_lap[['Driver', 'Team', 'LapNumber', 'LapTime', 'Stint',
+                               'TyreLife', 'Compound', 'Sector1Time', 'Sector2Time', 'Sector3Time']])
+        else:
+            print("Could not determine the fastest lap.")
+    else:
+        print("Lap data is empty, cannot determine fastest lap.")
+
+
+###############################################################################
+# 4. Compare Lap Times for Two Drivers
+###############################################################################
+def plot_lap_time_comparison(laps, drv1, drv2, session_info):
+    """Plots the lap times for two specified drivers."""
+    print(f"\n--- 4. Lap Time Comparison ({drv1} vs {drv2}) ---")
+    if not laps.empty:
+        laps_driver1 = laps.pick_driver(drv1)
+        laps_driver2 = laps.pick_driver(drv2)
+        if not laps_driver1.empty and not laps_driver2.empty:
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.plot(laps_driver1['LapNumber'], laps_driver1['LapTime'],
+                    label=drv1, color=fastf1.plotting.driver_color(drv1))
+            ax.plot(laps_driver2['LapNumber'], laps_driver2['LapTime'],
+                    label=drv2, color=fastf1.plotting.driver_color(drv2))
+            ax.set_xlabel("Lap Number")
+            ax.set_ylabel("Lap Time (MM:SS.ms)")
+            ax.set_title(f"{drv1} vs {drv2} Lap Times - "
+                         f"{session_info.event['EventName']} {session_info.event.year}")
+            ax.legend()
+            plt.grid(True, axis='y')
+            show_plot(fig)
+        else:
+            print(f"Could not find lap data for one or both drivers: {drv1}, {drv2}")
+    else:
+        print("Lap data is empty, cannot compare lap times.")
+
+
+###############################################################################
+# 5. Plot Telemetry for a Driver's Fastest Lap (Speed)
+###############################################################################
+def plot_fastest_lap_speed(laps, drv1, session_info):
+    """Plots the speed telemetry for a driver's fastest lap."""
+    print(f"\n--- 5. Fastest Lap Telemetry (Speed) for {drv1} ---")
+    if not laps.empty:
+        fastest_lap_driver1 = laps.pick_driver(drv1).pick_fastest()
+        if fastest_lap_driver1 is not None and not fastest_lap_driver1.empty:
+            try:
+                telemetry = fastest_lap_driver1.get_car_data().add_distance()
+                if not telemetry.empty:
+                    fig, ax = plt.subplots(figsize=(12, 5))
+                    ax.plot(telemetry['Distance'], telemetry['Speed'], label='Speed',
+                            color=fastf1.plotting.driver_color(drv1))
+                    ax.set_xlabel('Distance (m)')
+                    ax.set_ylabel('Speed (Km/h)')
+                    ax.set_title(f"{drv1} Fastest Lap ({fastest_lap_driver1['LapTime']}) Telemetry - "
+                                 f"{session_info.event['EventName']} {session_info.event.year}")
+                    ax.legend()
+                    plt.grid(True)
+                    show_plot(fig)
+                else:
+                    print(f"No telemetry data found for {drv1}'s fastest lap.")
+            except Exception as e:
+                print(f"Error getting telemetry for {drv1}'s fastest lap: {e}")
+        else:
+            print(f"Could not find fastest lap for {drv1}.")
+    else:
+        print("Lap data is empty, cannot plot telemetry.")
+
+
+###############################################################################
+# 6. Compare Speed Traces for Two Drivers on their Fastest Laps
+###############################################################################
+def plot_speed_trace_comparison(laps, drv1, drv2, session_info):
+    """Compares speed telemetry traces for the fastest laps of two drivers."""
+    print(f"\n--- 6. Speed Trace Comparison ({drv1} vs {drv2}) ---")
+    if not laps.empty:
+        fastest_d1 = laps.pick_driver(drv1).pick_fastest()
+        fastest_d2 = laps.pick_driver(drv2).pick_fastest()
+        if (fastest_d1 is not None and not fastest_d1.empty and
+                fastest_d2 is not None and not fastest_d2.empty):
+            try:
+                telemetry_d1 = fastest_d1.get_car_data().add_distance()
+                telemetry_d2 = fastest_d2.get_car_data().add_distance()
+                if not telemetry_d1.empty and not telemetry_d2.empty:
+                    fig, ax = plt.subplots(figsize=(12, 6))
+                    ax.plot(telemetry_d1['Distance'], telemetry_d1['Speed'],
+                            label=f"{drv1} ({fastest_d1['LapTime']})",
+                            color=fastf1.plotting.driver_color(drv1))
+                    ax.plot(telemetry_d2['Distance'], telemetry_d2['Speed'],
+                            label=f"{drv2} ({fastest_d2['LapTime']})",
+                            color=fastf1.plotting.driver_color(drv2))
+                    ax.set_xlabel('Distance (m)')
+                    ax.set_ylabel('Speed (Km/h)')
+                    ax.set_title(f"Fastest Lap Speed Comparison - "
+                                 f"{session_info.event['EventName']} {session_info.event.year}")
+                    ax.legend()
+                    plt.grid(True)
+                    show_plot(fig)
+                else:
+                    print("Could not retrieve telemetry for one or both drivers' fastest laps.")
+            except Exception as e:
+                print(f"Error getting telemetry for speed comparison: {e}")
+        else:
+            print(f"Could not find fastest lap for one or both drivers: {drv1}, {drv2}")
+    else:
+        print("Lap data is empty, cannot compare speed traces.")
+
+
+###############################################################################
+# 7. Analyze Tyre Strategy (Compounds Used and Stint Lengths)
+###############################################################################
+def analyze_tyre_strategy(laps, drv1):
+    """Prints the tyre compound and stint length analysis for a driver."""
+    print(f"\n--- 7. Tyre Strategy Analysis for {drv1} ---")
+    if not laps.empty:
+        laps_driver1 = laps.pick_driver(drv1)
+        if not laps_driver1.empty:
+            laps_driver1['Stint'] = pd.to_numeric(laps_driver1['Stint'], errors='coerce')
+            driver_stints = laps_driver1[['Stint', 'Compound', 'LapNumber', 'TyreLife']].dropna(subset=['Stint'])
+            if not driver_stints.empty:
+                stints = driver_stints.groupby('Stint')
+                print(f"Tyre Stints for {drv1}:")
+                for stint_num, stint_data in stints:
+                    compound = stint_data['Compound'].iloc[0]
+                    start_lap = stint_data['LapNumber'].min()
+                    end_lap = stint_data['LapNumber'].max()
+                    length = (end_lap - start_lap) + 1
+                    start_tyre_life = stint_data['TyreLife'].min()
+                    end_tyre_life = stint_data['TyreLife'].max()
+                    stint_num_int = int(stint_num) if pd.notna(stint_num) else 'N/A'
+                    start_tyre_life_int = int(start_tyre_life) if pd.notna(start_tyre_life) else 'N/A'
+                    end_tyre_life_int = int(end_tyre_life) if pd.notna(end_tyre_life) else 'N/A'
+                    print(f"  Stint {stint_num_int}: Laps {start_lap}-{end_lap} "
+                          f"({length} laps) on {compound} "
+                          f"(Tyre Life {start_tyre_life_int}-{end_tyre_life_int})")
+            else:
+                print(f"No valid stint data found for {drv1}.")
+        else:
+            print(f"No lap data found for {drv1}.")
+    else:
+        print("Lap data is empty, cannot analyze tyre strategy.")
+
+
+###############################################################################
+# 8. Plot Gear Shifts on Fastest Lap
+###############################################################################
+def plot_gear_shifts(laps, drv1, session_info):
+    """Plots the gear shifts over distance for a driver's fastest lap."""
+    print(f"\n--- 8. Gear Shift Analysis for {drv1} ---")
+    if not laps.empty:
+        fastest_lap_driver1 = laps.pick_driver(drv1).pick_fastest()
+        if fastest_lap_driver1 is not None and not fastest_lap_driver1.empty:
+            try:
+                telemetry_gear = fastest_lap_driver1.get_car_data().add_distance()
+                if not telemetry_gear.empty and 'nGear' in telemetry_gear.columns:
+                    fig, ax = plt.subplots(figsize=(12, 4))
+                    ax.plot(telemetry_gear['Distance'], telemetry_gear['nGear'],
+                            label='Gear', color='green', marker='.', markersize=3, linestyle='')
+                    ax.set_xlabel('Distance (m)')
+                    ax.set_ylabel('Gear')
+                    gear_values = sorted(telemetry_gear['nGear'].dropna().unique())
+                    if gear_values:
+                        ax.set_yticks(gear_values)
+                    ax.set_title(f"{drv1} Fastest Lap ({fastest_lap_driver1['LapTime']}) Gear Shifts - "
+                                 f"{session_info.event['EventName']} {session_info.event.year}")
+                    plt.grid(True, axis='y')
+                    show_plot(fig)
+                else:
+                    print(f"No telemetry or gear data found for {drv1}'s fastest lap.")
+            except Exception as e:
+                print(f"Error getting telemetry for gear analysis: {e}")
+        else:
+            print(f"Could not find fastest lap for {drv1}.")
+    else:
+        print("Lap data is empty, cannot plot gear shifts.")
+
+
+###############################################################################
+# (9th Analysis Removed)
+###############################################################################
+
+
+###############################################################################
+# 10. Compare Fastest Sector Times
+###############################################################################
+def analyze_sector_times(laps):
+    """Prints the overall fastest lap and the fastest individual sector times."""
+    print("\n--- 10. Fastest Sector Times Comparison ---")
+    if not laps.empty:
+        laps_with_times = laps.dropna(subset=['LapTime', 'Sector1Time', 'Sector2Time', 'Sector3Time'])
+        if laps_with_times.empty:
+            print("No laps with complete time data found.")
+            return
+        fastest_overall = laps_with_times.loc[laps_with_times['LapTime'].idxmin()]
+        if fastest_overall is not None and not fastest_overall.empty:
+            print(f"Overall Fastest Lap: {fastest_overall['Driver']} {fastest_overall['LapTime']}")
+            print(f"  Sector 1: {fastest_overall['Sector1Time']}")
+            print(f"  Sector 2: {fastest_overall['Sector2Time']}")
+            print(f"  Sector 3: {fastest_overall['Sector3Time']}")
+            fastest_s1_lap = laps_with_times.loc[laps_with_times['Sector1Time'].idxmin()]
+            fastest_s2_lap = laps_with_times.loc[laps_with_times['Sector2Time'].idxmin()]
+            fastest_s3_lap = laps_with_times.loc[laps_with_times['Sector3Time'].idxmin()]
+            print("\nFastest Individual Sectors:")
+            print(f"  Sector 1: {fastest_s1_lap['Sector1Time']} by {fastest_s1_lap['Driver']} "
+                  f"on Lap {fastest_s1_lap['LapNumber']}")
+            print(f"  Sector 2: {fastest_s2_lap['Sector2Time']} by {fastest_s2_lap['Driver']} "
+                  f"on Lap {fastest_s2_lap['LapNumber']}")
+            print(f"  Sector 3: {fastest_s3_lap['Sector3Time']} by {fastest_s3_lap['Driver']} "
+                  f"on Lap {fastest_s3_lap['LapNumber']}")
+        else:
+            print("Could not determine the overall fastest lap from available data.")
+    else:
+        print("Lap data is empty, cannot analyze sector times.")
+
+
+###############################################################################
+# 11. Driver Positions Gained/Lost in the Race
+###############################################################################
+def analyze_positions_gained_lost(session):
+    """Calculates and prints the positions gained or lost by each driver."""
+    print("\n--- 11. Positions Gained/Lost ---")
+    if (hasattr(session, 'results') and not session.results.empty and
+        'GridPosition' in session.results.columns and 'Position' in session.results.columns):
+        results_pos = session.results.copy()
+        results_pos['GridPositionNum'] = pd.to_numeric(results_pos['GridPosition'], errors='coerce')
+        results_pos['PositionNum'] = pd.to_numeric(results_pos['Position'], errors='coerce')
+        valid_starters = results_pos.dropna(subset=['GridPositionNum'])
+        num_starters = valid_starters['GridPositionNum'].astype(int).max()
+        pit_start_pos = (num_starters + 1) if pd.notna(num_starters) and num_starters > 0 else 20
+        results_pos['GridPositionCalc'] = results_pos['GridPositionNum'].replace(0, pit_start_pos)
+        results_pos.dropna(subset=['GridPositionCalc', 'PositionNum'], inplace=True)
+        results_pos['PositionChange'] = results_pos['GridPositionCalc'] - results_pos['PositionNum']
+        results_pos['PositionChange'] = results_pos['PositionChange'].astype(int)
+
+        print(results_pos[['Abbreviation', 'GridPosition',
+                           'Position', 'PositionChange']].sort_values('PositionChange', ascending=False))
+    else:
+        print("Results data or required columns (GridPosition, Position) not available.")
+
+
+###############################################################################
+# 12. Track Status Changes (Safety Cars, Flags)
+###############################################################################
+def analyze_track_status(session):
+    """Prints track status changes (flags, SC) during the session."""
+    print("\n--- 12. Track Status ---")
+    if hasattr(session, 'track_status') and session.track_status is not None and not session.track_status.empty:
+        print(session.track_status)
+        sc_periods = session.track_status[session.track_status['Status'] == '4']
+        if not sc_periods.empty:
+            print("\nSafety Car Periods (Status 4):")
+            print(sc_periods)
+        red_flag_periods = session.track_status[session.track_status['Status'] == '3']
+        if not red_flag_periods.empty:
+            print("\nRed Flag Periods (Status 3):")
+            print(red_flag_periods)
+    else:
+        print("Track status data not available or empty for this session.")
+
+
+###############################################################################
+# 13. Race Control Messages
+###############################################################################
+def analyze_race_control_messages(session):
+    """Prints race control messages, optionally filtering for keywords."""
+    print("\n--- 13. Race Control Messages ---")
+    if hasattr(session, 'messages') and not session.messages.empty:
+        rcm = session.messages
+        print(f"Total Race Control Messages: {len(rcm)}")
+        print("Sample Messages:")
+        print(rcm.head())
+
+        keywords = ['INVESTIGATED', 'PENALTY', 'UNDER INVESTIGATION',
+                    'LAP DELETED', 'WARNING', 'SAFETY CAR']
+        if 'Message' in rcm.columns:
+            rcm['Message'] = rcm['Message'].astype(str)
+            filtered_msgs = rcm[rcm['Message'].str.contains('|'.join(keywords),
+                                                           case=False, na=False)]
+            if not filtered_msgs.empty:
+                print("\nFiltered Messages (Keywords):")
+                print(filtered_msgs[['Time', 'Category', 'Message']])
+            else:
+                print(f"\nNo messages found matching keywords: {keywords}")
+        else:
+            print("\n'Message' column not found in race control data.")
+    else:
+        print("Race control messages not available or empty for this session.")
+
+
+###############################################################################
+# 14. Weather Data Overview and Plot
+###############################################################################
+def plot_weather_data(session):
+    """Prints weather data sample and plots air/track temperature."""
+    print("\n--- 14. Weather Data ---")
+    if hasattr(session, 'weather_data') and not session.weather_data.empty:
+        weather_data = session.weather_data
+        print("Weather Data Sample:")
+        print(weather_data.head())
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.plot(weather_data['Time'], weather_data['AirTemp'],
+                label='Air Temp (°C)', color='red', marker='.', linestyle='-')
+        ax.plot(weather_data['Time'], weather_data['TrackTemp'],
+                label='Track Temp (°C)', color='blue', marker='.', linestyle='-')
+
+        # If there is rainfall data, overlay it on a secondary axis
+        if 'Rainfall' in weather_data.columns and weather_data['Rainfall'].max() > 0:
+            ax2 = ax.twinx()
+            ax2.bar(weather_data['Time'], weather_data['Rainfall'],
+                    label='Rainfall', color='lightblue', alpha=0.6, width=pd.Timedelta(minutes=1))
+            ax2.set_ylabel("Rainfall (mm or boolean)")
+            ax2.legend(loc='upper right')
+
+        ax.set_xlabel("Session Time")
+        ax.set_ylabel("Temperature (°C)")
+        ax.set_title(f"Weather Conditions - {session.event['EventName']} {session.event.year}")
+        ax.legend(loc='upper left')
+        ax.grid(True)
+        show_plot(fig)
+    else:
+        print("Weather data not available or empty for this session.")
+
+
+###############################################################################
+# 15. Plot Throttle and Brake Application on Fastest Lap
+###############################################################################
+def plot_throttle_brake_trace(laps, drv1, session_info):
+    """Plots throttle and brake application for a driver's fastest lap."""
+    print(f"\n--- 15. Throttle/Brake Trace for {drv1} ---")
+    if not laps.empty:
+        fastest_lap_driver1 = laps.pick_driver(drv1).pick_fastest()
+        if fastest_lap_driver1 is not None and not fastest_lap_driver1.empty:
+            try:
+                telemetry_inputs = fastest_lap_driver1.get_car_data().add_distance()
+                if (not telemetry_inputs.empty and
+                        'Throttle' in telemetry_inputs.columns and
+                        'Brake' in telemetry_inputs.columns):
+                    fig, ax = plt.subplots(2, 1, sharex=True, figsize=(12, 7))
+
+                    ax[0].plot(telemetry_inputs['Distance'], telemetry_inputs['Throttle'],
+                               label='Throttle', color='lime')
+                    ax[0].set_ylabel('Throttle (%)')
+                    ax[0].set_title(f"{drv1} Fastest Lap ({fastest_lap_driver1['LapTime']}) Inputs - "
+                                    f"{session_info.event['EventName']} {session_info.event.year}")
+                    ax[0].legend()
+                    ax[0].grid(True)
+
+                    ax[1].plot(telemetry_inputs['Distance'], telemetry_inputs['Brake'],
+                               label='Brake', color='red')
+                    ax[1].set_xlabel('Distance (m)')
+                    ax[1].set_ylabel('Brake Applied')
+                    ax[1].legend()
+                    ax[1].grid(True)
+
+                    show_plot(fig)
+                else:
+                    print(f"No telemetry or Throttle/Brake data found for {drv1}'s fastest lap.")
+            except Exception as e:
+                print(f"Error getting telemetry for input trace: {e}")
+        else:
+            print(f"Could not find fastest lap for {drv1}.")
+    else:
+        print("Lap data is empty, cannot plot inputs.")
+
+
+###############################################################################
+# 16. Lap Time Distribution (Histogram)
+###############################################################################
+def plot_lap_time_distribution(laps, drv1, session_info):
+    """Plots a histogram of valid lap times for a driver."""
+    print(f"\n--- 16. Lap Time Distribution for {drv1} ---")
+    if not laps.empty:
+        laps_driver1_valid = laps.pick_driver(drv1).pick_accurate().dropna(subset=['LapTime'])
+        if not laps_driver1_valid.empty:
+            laps_driver1_valid['LapTimeSeconds'] = laps_driver1_valid['LapTime'].dt.total_seconds()
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.hist(laps_driver1_valid['LapTimeSeconds'], bins=20, alpha=0.7,
+                    color=fastf1.plotting.driver_color(drv1), edgecolor='black')
+            ax.set_xlabel("Lap Time (seconds)")
+            ax.set_ylabel("Frequency (Number of Laps)")
+            ax.set_title(f"{drv1} Lap Time Distribution (Valid Laps) - "
+                         f"{session_info.event['EventName']} {session_info.event.year}")
+            plt.grid(True, axis='y')
+            show_plot(fig)
+        else:
+            print(f"No valid laps with time data found for {drv1}.")
+    else:
+        print("Lap data is empty, cannot plot lap time distribution.")
+
+
+###############################################################################
+# 17. Plotting the Track Map using Fastest Lap Position Data
+###############################################################################
+def plot_track_map(laps, session_info):
+    """Plots the circuit layout using position data from the fastest lap."""
+    print("\n--- 17. Track Map ---")
+    if not laps.empty:
+        fastest_lap_pos = laps.pick_fastest()
+        if fastest_lap_pos is not None and not fastest_lap_pos.empty:
+            try:
+                lap_telemetry = fastest_lap_pos.get_pos_data(pad=1)
+                if (not lap_telemetry.empty and
+                        'X' in lap_telemetry.columns and
+                        'Y' in lap_telemetry.columns):
+                    fig, ax = plt.subplots(figsize=(8, 8))
+                    ax.plot(lap_telemetry['X'], lap_telemetry['Y'],
+                            color='grey', linewidth=2, label='Track Layout')
+                    ax.set_aspect('equal', adjustable='box')
+                    ax.set_xlabel("X Coordinate (m)")
+                    ax.set_ylabel("Y Coordinate (m)")
+                    ax.set_title(f"{session_info.event['EventName']} Track Layout "
+                                 f"({session_info.event.year})")
+                    plt.xticks([])
+                    plt.yticks([])
+                    show_plot(fig)
+                else:
+                    print("Position data (X, Y coordinates) not found for the fastest lap.")
+            except Exception as e:
+                print(f"Error getting position data for track map: {e}")
+        else:
+            print("Could not determine the fastest lap to plot track map.")
+    else:
+        print("Lap data is empty, cannot plot track map.")
+
+
+###############################################################################
+# 18. Average Speed per Lap Comparison
+###############################################################################
+def plot_average_speed_comparison(laps, drv1, drv2, session_info):
+    """Calculates and plots the average speed per lap for two drivers."""
+    print(f"\n--- 18. Average Speed per Lap ({drv1} vs {drv2}) ---")
+    if not laps.empty:
+        avg_speeds_d1, avg_speeds_d2 = [], []
+        no_tel_warn_d1, no_tel_warn_d2 = True, True
+
+        valid_laps_d1 = laps.pick_driver(drv1).pick_accurate()
+        if not valid_laps_d1.empty:
+            for lap_info in valid_laps_d1.iterlaps():
+                lap = lap_info[1]
+                try:
+                    telemetry = lap.get_car_data()
+                    if not telemetry.empty and 'Speed' in telemetry.columns:
+                        avg_speeds_d1.append({
+                            'LapNumber': lap['LapNumber'],
+                            'AvgSpeed': telemetry['Speed'].mean()
+                        })
+                except Exception:
+                    if no_tel_warn_d1:
+                        no_tel_warn_d1 = False
+            avg_speed_df_d1 = pd.DataFrame(avg_speeds_d1)
+        else:
+            print(f"No valid laps found for {drv1}")
+            avg_speed_df_d1 = pd.DataFrame()
+
+        valid_laps_d2 = laps.pick_driver(drv2).pick_accurate()
+        if not valid_laps_d2.empty:
+            for lap_info in valid_laps_d2.iterlaps():
+                lap = lap_info[1]
+                try:
+                    telemetry = lap.get_car_data()
+                    if not telemetry.empty and 'Speed' in telemetry.columns:
+                        avg_speeds_d2.append({
+                            'LapNumber': lap['LapNumber'],
+                            'AvgSpeed': telemetry['Speed'].mean()
+                        })
+                except Exception:
+                    if no_tel_warn_d2:
+                        no_tel_warn_d2 = False
+            avg_speed_df_d2 = pd.DataFrame(avg_speeds_d2)
+        else:
+            print(f"No valid laps found for {drv2}")
+            avg_speed_df_d2 = pd.DataFrame()
+
+        if not avg_speed_df_d1.empty or not avg_speed_df_d2.empty:
+            fig, ax = plt.subplots(figsize=(12, 6))
+            if not avg_speed_df_d1.empty:
+                ax.plot(avg_speed_df_d1['LapNumber'], avg_speed_df_d1['AvgSpeed'],
+                        label=f'{drv1} Avg Speed', marker='.',
+                        linestyle='-', color=fastf1.plotting.driver_color(drv1))
+            if not avg_speed_df_d2.empty:
+                ax.plot(avg_speed_df_d2['LapNumber'], avg_speed_df_d2['AvgSpeed'],
+                        label=f'{drv2} Avg Speed', marker='.',
+                        linestyle='-', color=fastf1.plotting.driver_color(drv2))
+            ax.set_xlabel("Lap Number")
+            ax.set_ylabel("Average Speed (Km/h)")
+            ax.set_title(f"Average Speed per Lap Comparison - "
+                         f"{session_info.event['EventName']} {session_info.event.year}")
+            ax.legend()
+            plt.grid(True)
+            show_plot(fig)
+        else:
+            print("Could not calculate average speeds for plotting.")
+    else:
+        print("Lap data is empty, cannot calculate average speeds.")
+
+
+###############################################################################
+# 19. Theoretical Best Lap Calculation
+###############################################################################
+def analyze_theoretical_best_lap(laps, drv1):
+    """Calculates the theoretical best lap time for a driver based on their fastest sectors."""
+    print(f"\n--- 19. Theoretical Best Lap for {drv1} ---")
+    if not laps.empty:
+        laps_driver = laps.pick_driver(drv1).dropna(subset=['Sector1Time', 'Sector2Time', 'Sector3Time'])
+        if not laps_driver.empty:
+            best_s1 = laps_driver['Sector1Time'].min()
+            best_s2 = laps_driver['Sector2Time'].min()
+            best_s3 = laps_driver['Sector3Time'].min()
+            theoretical_best = best_s1 + best_s2 + best_s3
+
+            actual_best_lap = laps_driver['LapTime'].min()
+
+            print(f"Fastest Sector 1: {best_s1}")
+            print(f"Fastest Sector 2: {best_s2}")
+            print(f"Fastest Sector 3: {best_s3}")
+            print(f"Theoretical Best Lap Time: {theoretical_best}")
+            print(f"Actual Best Lap Time:      {actual_best_lap}")
+            print(f"Delta to Actual Best:      {theoretical_best - actual_best_lap}")
+        else:
+            print(f"No laps with complete sector time data found for {drv1}.")
+    else:
+        print("Lap data is empty, cannot calculate theoretical best lap.")
+
+
+###############################################################################
+# 20. Tyre Degradation Plot (Lap Time vs Tyre Age)
+###############################################################################
+def plot_tyre_degradation(laps, drv1, session_info, stint_number=2):
+    """
+    Plots lap time against tyre age for a specific stint to show degradation.
+    Adjust `stint_number` as needed.
+    """
+    print(f"\n--- 20. Tyre Degradation Analysis for {drv1} (Stint {stint_number}) ---")
+    if not laps.empty:
+        laps_driver = laps.pick_driver(drv1)
+        laps_driver['Stint'] = pd.to_numeric(laps_driver['Stint'], errors='coerce')
+        stint_laps = laps_driver[laps_driver['Stint'] == stint_number].dropna(subset=['LapTime', 'TyreLife'])
+
+        if not stint_laps.empty:
+            compound = stint_laps['Compound'].iloc[0]
+            stint_laps = stint_laps.pick_accurate()  # remove in/out laps if any
+            if stint_laps.empty:
+                print(f"No accurate laps found for {drv1} in Stint {stint_number}.")
+                return
+
+            stint_laps['LapTimeSeconds'] = stint_laps['LapTime'].dt.total_seconds()
+
+            # Simple linear regression to visualize trend
+            try:
+                poly = np.polyfit(stint_laps['TyreLife'], stint_laps['LapTimeSeconds'], 1)
+                trend = np.poly1d(poly)
+                print(f"Degradation Trend (Slope): {poly[0]:.3f} seconds per lap of tyre life")
+            except (np.linalg.LinAlgError, TypeError):
+                trend = None
+                print("Could not calculate linear trend for degradation.")
+
+            fig, ax = plt.subplots(figsize=(10, 6))
+            color_used = fastf1.plotting.COMPOUND_COLORS.get(compound, '#CCCCCC')
+            ax.scatter(stint_laps['TyreLife'], stint_laps['LapTimeSeconds'],
+                       label=f'{compound} Laps', color=color_used, alpha=0.8)
+
+            if trend is not None:
+                ax.plot(stint_laps['TyreLife'], trend(stint_laps['TyreLife']),
+                        linestyle='--', color='grey',
+                        label=f'Trend ({poly[0]:.3f} s/lap)')
+
+            ax.set_xlabel("Tyre Age (Laps)")
+            ax.set_ylabel("Lap Time (seconds)")
+            ax.set_title(f"{drv1} Tyre Degradation - Stint {stint_number} ({compound}) - "
+                         f"{session_info.event['EventName']} {session_info.event.year}")
+            ax.legend()
+            plt.grid(True)
+            show_plot(fig)
+        else:
+            print(f"No data found for {drv1} in Stint {stint_number}.")
+    else:
+        print("Lap data is empty, cannot analyze tyre degradation.")
+
+
+###############################################################################
+# 21. Speed Delta Comparison Plot
+###############################################################################
+def plot_speed_delta(laps, drv1, drv2, session_info):
+    """Compares speed traces of two drivers' fastest laps and plots the delta."""
+    print(f"\n--- 21. Speed Delta Comparison ({drv1} vs {drv2}) ---")
+    if not laps.empty:
+        fastest_d1 = laps.pick_driver(drv1).pick_fastest()
+        fastest_d2 = laps.pick_driver(drv2).pick_fastest()
+        if (fastest_d1 is not None and not fastest_d1.empty and
+                fastest_d2 is not None and not fastest_d2.empty):
+            try:
+                tel_d1 = fastest_d1.get_car_data().add_distance()
+                tel_d2 = fastest_d2.get_car_data().add_distance()
+                if not tel_d1.empty and not tel_d2.empty:
+                    # Interpolate d2's speed onto d1's distance
+                    tel_d2_interp = fastf1.utils.interpolate_vectors(
+                        tel_d1['Distance'], tel_d2['Distance'], tel_d2['Speed']
+                    )
+                    speed_delta = tel_d1['Speed'] - tel_d2_interp
+
+                    fig, ax = plt.subplots(figsize=(12, 6))
+                    ax.plot(tel_d1['Distance'], speed_delta,
+                            label=f'Speed Delta ({drv1} - {drv2})', color='white')
+                    ax.axhline(0, color='grey', linestyle='--')  # Zero diff line
+                    ax.set_xlabel('Distance (m)')
+                    ax.set_ylabel(f'Speed Delta (Km/h)\n({drv1} > 0 > {drv2})')
+                    ax.set_title(f"Fastest Lap Speed Delta Comparison - "
+                                 f"{session_info.event['EventName']} {session_info.event.year}")
+
+                    # Fill color to indicate who is faster
+                    ax.fill_between(tel_d1['Distance'], speed_delta, where=(speed_delta > 0),
+                                    color=fastf1.plotting.driver_color(drv1), alpha=0.5, interpolate=True)
+                    ax.fill_between(tel_d1['Distance'], speed_delta, where=(speed_delta < 0),
+                                    color=fastf1.plotting.driver_color(drv2), alpha=0.5, interpolate=True)
+                    ax.legend()
+                    plt.grid(True)
+                    show_plot(fig)
+                else:
+                    print("Could not retrieve telemetry for one or both drivers' fastest laps.")
+            except Exception as e:
+                print(f"Error during speed delta calculation or plotting: {e}")
+        else:
+            print(f"Could not find fastest lap for one or both drivers: {drv1}, {drv2}")
+    else:
+        print("Lap data is empty, cannot compare speed delta.")
+
+
+###############################################################################
+# 22. Telemetry Overlay on Track Map (e.g., Speed)
+###############################################################################
+def plot_telemetry_on_track(laps, drv1, session_info):
+    """Plots the track map colored by speed from the driver's fastest lap."""
+    print(f"\n--- 22. Telemetry Overlay on Track (Speed) for {drv1} ---")
+    if not laps.empty:
+        fastest_lap = laps.pick_driver(drv1).pick_fastest()
+        if fastest_lap is not None and not fastest_lap.empty:
+            try:
+                pos_data = fastest_lap.get_pos_data(pad=1)
+                car_data = fastest_lap.get_car_data().add_distance()  # Ensure Distance is present
+
+                if not pos_data.empty and not car_data.empty:
+                    import matplotlib.colors as mcolors
+                    from matplotlib.colors import ListedColormap
+
+                    telemetry = pd.merge_ordered(
+                        pos_data, car_data[['Time', 'Speed', 'Distance']],
+                        on='Time', how='left'
+                    )
+                    telemetry.ffill(inplace=True)
+
+                    points = np.array([telemetry['X'], telemetry['Y']]).T.reshape(-1, 1, 2)
+                    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+                    speed = telemetry['Speed'].to_numpy().astype(float)
+
+                    cmap = plt.get_cmap('plasma')
+                    norm = plt.Normalize(speed.min(), speed.max())
+
+                    lc = LineCollection(segments, cmap=cmap, norm=norm, linewidth=3)
+                    lc.set_array(speed)
+
+                    fig, ax = plt.subplots(figsize=(10, 10))
+                    ax.add_collection(lc)
+                    ax.axis('equal')
+                    ax.set_xticks([])
+                    ax.set_yticks([])
+                    ax.set_xlabel("X Coordinate (m)")
+                    ax.set_ylabel("Y Coordinate (m)")
+                    ax.set_title(f"{drv1} Fastest Lap Speed Overlay - "
+                                 f"{session_info.event['EventName']} {session_info.event.year}")
+
+                    cbar = plt.colorbar(lc, ax=ax, label='Speed (Km/h)', fraction=0.046, pad=0.04)
+                    show_plot(fig)
+                else:
+                    print(f"Could not retrieve position or car data for {drv1}'s fastest lap.")
+            except Exception as e:
+                print(f"Error during telemetry overlay plotting: {e}")
+        else:
+            print(f"Could not find fastest lap for {drv1}.")
+    else:
+        print("Lap data is empty, cannot plot telemetry overlay.")
+
+
+###############################################################################
+# 23. Mini-Sector Analysis (Basic Time Comparison)
+###############################################################################
+def analyze_mini_sectors(laps, drv1, drv2, session_info, num_sectors=20):
+    """Divides the fastest laps into mini-sectors and compares time delta."""
+    print(f"\n--- 23. Mini-Sector Time Comparison ({drv1} vs {drv2}) ---")
+    if not laps.empty:
+        fastest_d1 = laps.pick_driver(drv1).pick_fastest()
+        fastest_d2 = laps.pick_driver(drv2).pick_fastest()
+        if (fastest_d1 is not None and not fastest_d1.empty and
+                fastest_d2 is not None and not fastest_d2.empty):
+            try:
+                tel_d1 = fastest_d1.get_telemetry()
+                tel_d2 = fastest_d2.get_telemetry()
+                if not tel_d1.empty and not tel_d2.empty:
+                    total_distance = tel_d1['Distance'].max()
+                    minisector_length = total_distance / num_sectors
+                    tel_d1['MiniSector'] = (tel_d1['Distance'] // minisector_length).astype(int) + 1
+                    tel_d2['MiniSector'] = (tel_d2['Distance'] // minisector_length).astype(int) + 1
+
+                    # Time in each mini-sector
+                    time_d1 = tel_d1.groupby('MiniSector')['Time'].agg(['min', 'max'])
+                    time_d1['SectorTime'] = time_d1['max'] - time_d1['min']
+                    time_d2 = tel_d2.groupby('MiniSector')['Time'].agg(['min', 'max'])
+                    time_d2['SectorTime'] = time_d2['max'] - time_d2['min']
+
+                    comparison = pd.merge(time_d1[['SectorTime']],
+                                          time_d2[['SectorTime']],
+                                          left_index=True, right_index=True,
+                                          suffixes=(f'_{drv1}', f'_{drv2}'))
+                    comparison['Delta'] = (comparison[f'SectorTime_{drv1}'] -
+                                           comparison[f'SectorTime_{drv2}'])
+                    comparison['DeltaSeconds'] = comparison['Delta'].dt.total_seconds()
+
+                    print(f"Mini-Sector Time Comparison ({num_sectors} sectors):")
+                    print(comparison[[f'SectorTime_{drv1}', f'SectorTime_{drv2}', 'DeltaSeconds']])
+
+                    # Plot time delta per mini-sector
+                    fig, ax = plt.subplots(figsize=(12, 6))
+                    bar_colors = np.where(comparison['DeltaSeconds'] < 0,
+                                          fastf1.plotting.driver_color(drv1),
+                                          fastf1.plotting.driver_color(drv2))
+                    ax.bar(comparison.index, comparison['DeltaSeconds'], color=bar_colors)
+                    ax.axhline(0, color='grey', linestyle='--')
+                    ax.set_xlabel("Mini-Sector Number")
+                    ax.set_ylabel(f"Time Delta (s)\n({drv2} < 0 < {drv1})")
+                    ax.set_title(f"Fastest Lap Mini-Sector Time Delta ({drv1} vs {drv2}) - "
+                                 f"{session_info.event['EventName']} {session_info.event.year}")
+                    plt.grid(True, axis='y')
+                    show_plot(fig)
+
+                else:
+                    print("Could not retrieve telemetry for mini-sector analysis.")
+            except Exception as e:
+                print(f"Error during mini-sector analysis: {e}")
+        else:
+            print(f"Could not find fastest lap for one or both drivers: {drv1}, {drv2}")
+    else:
+        print("Lap data is empty, cannot perform mini-sector analysis.")
+
+
+###############################################################################
+# Main Execution
+###############################################################################
+if __name__ == "__main__":
+
+    # 1. Create or confirm cache directory
+    if not os.path.exists(cache_path):
+        try:
+            os.makedirs(cache_path)
+            print(f"Created cache directory: {cache_path}")
+        except OSError as e:
+            print(f"Error creating cache directory {cache_path}: {e}")
+            exit()
+
+    # 2. Enable the FastF1 cache
+    try:
+        fastf1.Cache.enable_cache(cache_path)
+        print(f"Cache enabled at: {fastf1.Cache.get_cache_path()}")
+    except Exception as e:
+        print(f"Cache setup failed: {e}")
+
+    # Optional: set up matplotlib with the FastF1 style
+    fastf1.plotting.setup_mpl(mpl_timedelta_support=True,
+                              color_scheme='fastf1',
+                              misc_mpl_mods=True)
+
+    # 3. Load the session data
+    print(f"\nLoading session: {year} {event_name} - {session_type}")
+    try:
+        session = fastf1.get_session(year, event_name, session_type)
+        # Load all relevant data for advanced analysis
+        session.load(laps=True, telemetry=True, weather=True, messages=True)
+        print(f"Loaded session: {session.event['EventName']} {session.name}")
+        laps = session.laps if session.laps is not None else pd.DataFrame()
+    except Exception as e:
+        print(f"Error loading session {year} {event_name} {session_type}: {e}")
+        traceback.print_exc()
+        exit()
+
+    # 4. Run analyses (9th is removed)
+    if not laps.empty:
+        analyze_race_schedule(year)
+        analyze_race_results(session)
+        analyze_fastest_lap(laps)
+        plot_lap_time_comparison(laps, driver1, driver2, session)
+        plot_fastest_lap_speed(laps, driver1, session)
+        plot_speed_trace_comparison(laps, driver1, driver2, session)
+        analyze_tyre_strategy(laps, driver1)
+        analyze_tyre_strategy(laps, driver2)
+        plot_gear_shifts(laps, driver1, session)
+        # (No 9th analysis here)
+        analyze_sector_times(laps)
+        analyze_positions_gained_lost(session)
+        analyze_track_status(session)
+        analyze_race_control_messages(session)
+        plot_weather_data(session)
+        plot_throttle_brake_trace(laps, driver1, session)
+        plot_lap_time_distribution(laps, driver1, session)
+        plot_track_map(laps, session)
+        plot_average_speed_comparison(laps, driver1, driver2, session)
+
+        # Advanced examples
+        print("\n" + "="*20 + " Advanced Analyses " + "="*20)
+        analyze_theoretical_best_lap(laps, driver1)
+        analyze_theoretical_best_lap(laps, driver2)
+        plot_tyre_degradation(laps, driver1, session, stint_number=1)  # 1st stint
+        plot_tyre_degradation(laps, driver1, session, stint_number=2)  # 2nd stint
+        plot_speed_delta(laps, driver1, driver2, session)
+        plot_telemetry_on_track(laps, driver1, session)
+        analyze_mini_sectors(laps, driver1, driver2, session, num_sectors=25)
+    else:
+        print("Lap data is empty. Analyses requiring laps will be skipped.")
+
+    print("\n--- Analysis Script Finished ---")

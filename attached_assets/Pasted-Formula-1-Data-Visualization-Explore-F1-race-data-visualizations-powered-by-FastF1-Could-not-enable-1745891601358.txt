@@ -1,0 +1,90 @@
+Formula 1 Data Visualization
+Explore F1 race data visualizations powered by FastF1
+
+Could not enable cache: Cache directory does not exist! Please check for typos or create it first.. Continuing without cache.
+
+Bahrain Grand Prix 2023 - Race
+
+Lap Times
+
+
+Driver Comparison
+
+
+Telemetry Analysis
+
+
+Track Position
+
+
+Statistics
+
+Lap Time Analysis
+Select Drivers
+
+VER
+GAS
+OverflowError: int too big to convert
+Traceback:
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 121, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 640, in code_to_exec
+    exec(code, module.__dict__)
+File "/home/runner/workspace/app.py", line 132, in <module>
+    fig_lap_times = plot_lap_times(session, selected_drivers_lap)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/visualizations.py", line 108, in plot_lap_times
+    plt.tight_layout()
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/pyplot.py", line 2833, in tight_layout
+    gcf().tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad, rect=rect)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/figure.py", line 3640, in tight_layout
+    engine.execute(self)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/layout_engine.py", line 183, in execute
+    kwargs = get_tight_layout_figure(
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/_tight_layout.py", line 266, in get_tight_layout_figure
+    kwargs = _auto_adjust_subplotpars(fig, renderer,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/_tight_layout.py", line 82, in _auto_adjust_subplotpars
+    bb += [martist._get_tightbbox_for_layout_only(ax, renderer)]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/artist.py", line 1402, in _get_tightbbox_for_layout_only
+    return obj.get_tightbbox(*args, **{**kwargs, "for_layout_only": True})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/axes/_base.py", line 4548, in get_tightbbox
+    ba = martist._get_tightbbox_for_layout_only(axis, renderer)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/artist.py", line 1402, in _get_tightbbox_for_layout_only
+    return obj.get_tightbbox(*args, **{**kwargs, "for_layout_only": True})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/axis.py", line 1351, in get_tightbbox
+    ticks_to_draw = self._update_ticks()
+                    ^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/axis.py", line 1282, in _update_ticks
+    major_labels = self.major.formatter.format_ticks(major_locs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/ticker.py", line 217, in format_ticks
+    return [self(value, i) for i, value in enumerate(values)]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/ticker.py", line 217, in <listcomp>
+    return [self(value, i) for i, value in enumerate(values)]
+            ^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/dates.py", line 590, in __call__
+    result = num2date(x, self.tz).strftime(self.fmt)
+             ^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/dates.py", line 484, in num2date
+    return _from_ordinalf_np_vectorized(x, tz).tolist()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/numpy/lib/_function_base_impl.py", line 2522, in __call__
+    return self._call_as_normal(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/numpy/lib/_function_base_impl.py", line 2515, in _call_as_normal
+    return self._vectorize_call(func=func, args=vargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/numpy/lib/_function_base_impl.py", line 2605, in _vectorize_call
+    outputs = ufunc(*inputs)
+              ^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/matplotlib/dates.py", line 348, in _from_ordinalf
+    np.timedelta64(int(np.round(x * MUSECONDS_PER_DAY)), 'us'))
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
